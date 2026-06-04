@@ -1,17 +1,21 @@
 # Secrets and environment files
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 openai-api-key.txt
 
 # Dependencies and build outputs
 node_modules/
+.next/
+.vercel/
 dist/
 build/
 
 # Logs and temp files
 *.log
+*.tsbuildinfo
 tmp/
 temp/
 
@@ -20,3 +24,4 @@ temp/
 Thumbs.db
 .vscode/
 .idea/
+.qa/

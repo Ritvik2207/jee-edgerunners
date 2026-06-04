@@ -1,0 +1,54 @@
+import Link from "next/link";
+import { ArrowRight, Database, ShieldCheck, Sparkles } from "lucide-react";
+
+export default function HomePage() {
+  return (
+    <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+      <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1fr_0.85fr]">
+        <div>
+          <p className="mb-4 text-sm font-black uppercase tracking-[0.26em] text-edge-lime">JEE Main | PCM Drop-Year</p>
+          <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-tight text-edge-text sm:text-7xl">
+            JEE Edgerunners
+          </h1>
+          <p className="mt-6 max-w-2xl text-lg leading-8 text-edge-muted">
+            A real web dashboard for daily PCM planning, syllabus progress, error repair, mock analytics, and focused study sessions.
+            Sign in support is wired for Supabase, with a local demo mode while setup is incomplete.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link className="edge-button px-5" href="/dashboard">
+              Open dashboard <ArrowRight size={18} />
+            </Link>
+            <Link className="ghost-button px-5" href="/settings">
+              Setup account saving
+            </Link>
+          </div>
+        </div>
+
+        <div className="edge-panel rounded-xl p-5">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">App foundation</p>
+              <h2 className="mt-1 text-2xl font-black">Built to grow</h2>
+            </div>
+            <Sparkles className="text-edge-lime" />
+          </div>
+          <div className="grid gap-3">
+            {[
+              ["Accounts", "Email/password and Google sign-in through Supabase.", ShieldCheck],
+              ["Online data", "Progress, planner, mocks, mistakes, and notes are database-ready.", Database],
+              ["AI later", "Clean placeholder hooks for study-plan AI and doubt solving.", Sparkles]
+            ].map(([title, text, Icon]) => (
+              <div key={title as string} className="rounded-lg border border-edge-line bg-white/[0.035] p-4">
+                <div className="mb-2 flex items-center gap-3">
+                  <Icon className="text-edge-cyan" size={19} />
+                  <strong>{title as string}</strong>
+                </div>
+                <p className="text-sm leading-6 text-edge-muted">{text as string}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
