@@ -1,0 +1,3002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JEE Edgerunners | Cyberpunk JEE Dashboard</title>
+  <style>
+    :root {
+      --bg: #05030d;
+      --bg-soft: #070b16;
+      --panel: #0d1020;
+      --panel-2: #12182d;
+      --paper: #f7f4ff;
+      --muted: #9ba6c8;
+      --soft: #d9ddff;
+      --line: rgba(36, 248, 255, 0.18);
+      --line-strong: rgba(255, 61, 242, 0.38);
+      --acid: #b6ff3d;
+      --cyan: #24f8ff;
+      --coral: #ff3df2;
+      --gold: #ffde59;
+      --violet: #7c4dff;
+      --math: #ff3df2;
+      --physics: #24f8ff;
+      --chemistry: #b6ff3d;
+      --shadow: 0 24px 90px rgba(0, 0, 0, 0.46), 0 0 38px rgba(36, 248, 255, 0.08);
+      --radius: 8px;
+      --max: 1180px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--paper);
+      background:
+        linear-gradient(135deg, rgba(36, 248, 255, 0.16), transparent 24%),
+        linear-gradient(245deg, rgba(255, 61, 242, 0.13), transparent 28%),
+        linear-gradient(25deg, rgba(182, 255, 61, 0.08), transparent 34%),
+        var(--bg);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -3;
+      background-image:
+        linear-gradient(rgba(36, 248, 255, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 61, 242, 0.06) 1px, transparent 1px);
+      background-size: 42px 42px, 42px 42px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent 82%);
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 6px),
+        linear-gradient(90deg, transparent, rgba(36, 248, 255, 0.08), transparent 28%, rgba(255, 61, 242, 0.08), transparent 70%);
+      mix-blend-mode: screen;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button,
+    a,
+    input,
+    textarea,
+    select,
+    .metric-card,
+    .focus-card,
+    .planner-input-card,
+    .planner-output-card,
+    .timer-display-card,
+    .timer-control-card,
+    .dashboard-card,
+    .tip-card,
+    .tool-card,
+    .syllabus-card,
+    .timeline-card {
+      transition: all 0.3s ease;
+    }
+
+    .motion-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      width: 100vw;
+      height: 100vh;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid var(--line);
+      background: rgba(5, 3, 13, 0.74);
+      backdrop-filter: blur(18px);
+    }
+
+    .nav {
+      width: min(var(--max), calc(100% - 32px));
+      min-height: 68px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      width: 36px;
+      aspect-ratio: 1;
+      border: 1px solid var(--line-strong);
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(36, 248, 255, 0.24), rgba(255, 61, 242, 0.18), rgba(182, 255, 61, 0.14));
+      border-radius: var(--radius);
+      box-shadow: 0 0 22px rgba(36, 248, 255, 0.2);
+    }
+
+    .brand-mark::before,
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      background: var(--paper);
+      opacity: 0.9;
+    }
+
+    .brand-mark::before {
+      width: 18px;
+      height: 2px;
+      transform: rotate(-28deg);
+    }
+
+    .brand-mark::after {
+      width: 2px;
+      height: 18px;
+      transform: rotate(28deg);
+    }
+
+    .brand-text {
+      display: grid;
+      gap: 1px;
+    }
+
+    .brand-text strong {
+      font-size: 0.92rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--paper);
+      text-shadow: 0 0 10px var(--cyan), 0 0 20px rgba(255, 61, 242, 0.55);
+      position: relative;
+    }
+
+    .brand:hover .brand-text strong {
+      color: var(--acid);
+      transform: skewX(-7deg);
+      text-shadow: 0 0 10px var(--acid), 0 0 20px var(--cyan), 0 0 30px rgba(255, 61, 242, 0.65);
+    }
+
+    .brand-text span {
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: var(--radius);
+    }
+
+    .nav-links a {
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 14px;
+      color: var(--soft);
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 0.88rem;
+    }
+
+    .nav-links a:hover {
+      color: var(--paper);
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .streak-widget {
+      min-height: 46px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 12px;
+      border: 1px solid var(--line);
+      background: rgba(30, 30, 40, 0.65);
+      backdrop-filter: blur(12px);
+      border-radius: var(--radius);
+      box-shadow: 0 0 22px rgba(255, 61, 242, 0.08);
+    }
+
+    .streak-icon {
+      font-size: 1.25rem;
+      filter: drop-shadow(0 0 8px rgba(255, 222, 89, 0.65));
+    }
+
+    .streak-widget span:not(.streak-icon) {
+      display: block;
+      color: var(--muted);
+      font-size: 0.66rem;
+      font-weight: 850;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .streak-widget strong {
+      display: block;
+      font-size: 1.05rem;
+      text-shadow: 0 0 10px rgba(255, 222, 89, 0.4);
+    }
+
+    .shell {
+      width: min(var(--max), calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      min-height: calc(100vh - 68px);
+      display: grid;
+      align-items: center;
+      gap: 30px;
+      padding: 54px 0 44px;
+    }
+
+    .hero-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    .hero-layout > *,
+    .dash-panel,
+    .focus-card,
+    .ticker,
+    .planner-input-card,
+    .planner-output-card,
+    .timer-display-card,
+    .timer-control-card,
+    .dashboard-card,
+    .tip-card,
+    .tool-card,
+    .syllabus-card {
+      min-width: 0;
+    }
+
+    .hero-copy {
+      min-height: 500px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 28px;
+      padding: clamp(26px, 5vw, 56px);
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(120deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02)),
+        rgba(23, 29, 30, 0.76);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-copy::before {
+      content: "";
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--cyan), var(--acid), var(--coral), var(--gold));
+    }
+
+    .eyebrow {
+      margin: 0 0 18px;
+      color: var(--acid);
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    h1 {
+      max-width: 820px;
+      margin: 0;
+      font-size: clamp(3rem, 9vw, 7.8rem);
+      line-height: 0.9;
+      letter-spacing: 0;
+      text-transform: uppercase;
+      overflow-wrap: anywhere;
+    }
+
+    h1 span {
+      display: block;
+    }
+
+    .hero-lede {
+      max-width: 690px;
+      margin: 22px 0 0;
+      color: var(--soft);
+      font-size: clamp(1rem, 2vw, 1.22rem);
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .primary-btn,
+    .ghost-btn {
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 0 18px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .primary-btn {
+      color: #101214;
+      background: var(--acid);
+      border: 1px solid rgba(183, 243, 79, 0.8);
+      box-shadow: 0 16px 42px rgba(183, 243, 79, 0.16);
+    }
+
+    .ghost-btn {
+      color: var(--paper);
+      border: 1px solid var(--line-strong);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .primary-btn:hover,
+    .ghost-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .dash-panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .metric-card,
+    .focus-card,
+    .planner-input-card,
+    .planner-output-card,
+    .timer-display-card,
+    .timer-control-card,
+    .tip-card,
+    .tool-card,
+    .syllabus-card,
+    .timeline-card {
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.018)),
+        rgba(30, 30, 40, 0.65);
+      backdrop-filter: blur(12px);
+      border-radius: var(--radius);
+      box-shadow: 0 18px 54px rgba(0, 0, 0, 0.26), 0 0 24px rgba(36, 248, 255, 0.07);
+    }
+
+    .metric-card:hover,
+    .focus-card:hover,
+    .planner-input-card:hover,
+    .planner-output-card:hover,
+    .timer-display-card:hover,
+    .timer-control-card:hover,
+    .dashboard-card:hover,
+    .tip-card:hover,
+    .tool-card:hover,
+    .timeline-card:hover {
+      border-color: var(--line-strong);
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.32), 0 0 34px rgba(36, 248, 255, 0.12);
+    }
+
+    .metric-card {
+      min-height: 142px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::after {
+      content: "";
+      position: absolute;
+      inset: auto 16px 14px 16px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent, var(--cyan)), transparent);
+      opacity: 0.7;
+    }
+
+    .metric-card span {
+      color: var(--muted);
+      font-size: 0.76rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .metric-card strong {
+      font-size: clamp(2.05rem, 5vw, 3rem);
+      line-height: 1;
+    }
+
+    .metric-card small {
+      color: var(--soft);
+      line-height: 1.5;
+    }
+
+    .focus-card {
+      padding: 22px;
+      min-height: 196px;
+      background:
+        linear-gradient(135deg, rgba(88, 215, 255, 0.12), rgba(183, 243, 79, 0.05)),
+        rgba(23, 29, 30, 0.86);
+    }
+
+    .focus-card h2,
+    .tool-card h2,
+    .section-title h2,
+    .timeline-card h3 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .focus-card p {
+      color: var(--soft);
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
+    .ticker {
+      display: flex;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.035);
+      border-radius: var(--radius);
+    }
+
+    .ticker-track {
+      display: flex;
+      gap: 12px;
+      min-width: max-content;
+      padding: 12px;
+      animation: ticker 28s linear infinite;
+    }
+
+    .ticker span {
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.18);
+      color: var(--soft);
+      border-radius: 999px;
+      font-size: 0.82rem;
+      white-space: nowrap;
+    }
+
+    @keyframes ticker {
+      to {
+        transform: translateX(-50%);
+      }
+    }
+
+    section {
+      padding: 74px 0;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+
+    .section-title p {
+      max-width: 600px;
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    .section-title h2 {
+      font-size: clamp(1.8rem, 4vw, 3.25rem);
+      text-transform: uppercase;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr minmax(240px, 340px);
+      gap: 14px;
+      align-items: center;
+      margin: 24px 0;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.035);
+      border-radius: var(--radius);
+    }
+
+    .filter-btn {
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid transparent;
+      color: var(--soft);
+      background: transparent;
+      border-radius: 6px;
+      font-weight: 750;
+    }
+
+    .filter-btn[aria-pressed="true"] {
+      color: #101214;
+      background: var(--paper);
+    }
+
+    .search-box {
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      min-height: 54px;
+      padding: 0 42px 0 16px;
+      color: var(--paper);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius);
+      outline: none;
+    }
+
+    .search-box input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 4px rgba(88, 215, 255, 0.10);
+    }
+
+    .search-box span {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--muted);
+      border-radius: 50%;
+      transform: translateY(-50%);
+    }
+
+    .search-box span::after {
+      content: "";
+      position: absolute;
+      width: 7px;
+      height: 2px;
+      right: -6px;
+      bottom: -3px;
+      background: var(--muted);
+      transform: rotate(45deg);
+      border-radius: 999px;
+    }
+
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0 22px;
+    }
+
+    .mini-stat {
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.035);
+      border-radius: var(--radius);
+    }
+
+    .mini-stat span {
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .mini-stat strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 1.55rem;
+    }
+
+    .syllabus-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .syllabus-card {
+      min-height: 254px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 18px;
+      position: relative;
+      overflow: hidden;
+      transform-style: preserve-3d;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .syllabus-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-top: 3px solid var(--subject, var(--cyan));
+      opacity: 0.85;
+    }
+
+    .syllabus-card:hover {
+      border-color: var(--line-strong);
+      background: rgba(29, 36, 37, 0.92);
+    }
+
+    .card-top {
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .unit-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 850;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .unit-kicker::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: var(--subject, var(--cyan));
+      border-radius: 50%;
+      box-shadow: 0 0 20px var(--subject, var(--cyan));
+    }
+
+    .check-wrap {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .check-wrap input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--acid);
+    }
+
+    .syllabus-card h3 {
+      position: relative;
+      margin: 12px 0 10px;
+      font-size: 1.2rem;
+      line-height: 1.22;
+      letter-spacing: 0;
+    }
+
+    .syllabus-card p {
+      position: relative;
+      margin: 0;
+      color: var(--soft);
+      line-height: 1.58;
+      font-size: 0.94rem;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      position: relative;
+    }
+
+    .tag {
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      color: var(--soft);
+      background: rgba(0, 0, 0, 0.14);
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 750;
+    }
+
+    .subject-mathematics {
+      --subject: var(--math);
+    }
+
+    .subject-physics {
+      --subject: var(--physics);
+    }
+
+    .subject-chemistry {
+      --subject: var(--chemistry);
+    }
+
+    .complete {
+      background: linear-gradient(135deg, rgba(183, 243, 79, 0.14), rgba(255, 255, 255, 0.035));
+      border-color: rgba(183, 243, 79, 0.35);
+    }
+
+    .planner-board {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.78fr) minmax(0, 1.22fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .planner-input-card,
+    .planner-output-card {
+      padding: 24px;
+    }
+
+    .planner-output-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .planner-output-card.is-updated {
+      animation: planPulse 720ms ease;
+      border-color: rgba(183, 243, 79, 0.58);
+    }
+
+    @keyframes planPulse {
+      0% {
+        box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22), 0 0 0 rgba(183, 243, 79, 0);
+      }
+
+      35% {
+        box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22), 0 0 0 5px rgba(183, 243, 79, 0.22);
+      }
+
+      100% {
+        box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22), 0 0 0 rgba(183, 243, 79, 0);
+      }
+    }
+
+    .planner-input-card {
+      display: grid;
+      align-content: start;
+      gap: 18px;
+    }
+
+    .planner-input-card h2,
+    .planner-output-card h2 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .planner-field {
+      display: grid;
+      gap: 10px;
+    }
+
+    .planner-field span,
+    .plan-label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 850;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .planner-field input[type="number"] {
+      width: 100%;
+      min-height: 58px;
+      padding: 0 16px;
+      color: var(--paper);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius);
+      outline: none;
+      font-size: 1.3rem;
+      font-weight: 850;
+    }
+
+    .planner-field input[type="number"]:focus {
+      border-color: var(--acid);
+      box-shadow: 0 0 0 4px rgba(183, 243, 79, 0.10);
+    }
+
+    .planner-field input[type="range"] {
+      width: 100%;
+      accent-color: var(--acid);
+    }
+
+    .hour-presets {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .hour-preset {
+      min-height: 38px;
+      color: var(--soft);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 6px;
+      font-weight: 800;
+    }
+
+    .hour-preset:hover {
+      color: var(--paper);
+      border-color: var(--line-strong);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .hour-preset[aria-pressed="true"] {
+      color: #101214;
+      border-color: rgba(183, 243, 79, 0.8);
+      background: var(--acid);
+      box-shadow: 0 10px 30px rgba(183, 243, 79, 0.14);
+    }
+
+    .planner-status {
+      min-height: 24px;
+      margin: -4px 0 0;
+      color: var(--acid);
+      font-size: 0.88rem;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+
+    .planner-status.is-muted {
+      color: var(--muted);
+    }
+
+    .plan-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+
+    .plan-stat {
+      padding: 13px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.035);
+      border-radius: var(--radius);
+    }
+
+    .plan-stat span {
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 850;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .plan-stat strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 1.25rem;
+    }
+
+    .daily-plan {
+      display: grid;
+      gap: 10px;
+    }
+
+    .plan-block {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 0 14px 14px;
+      border-left: 3px solid var(--accent, var(--cyan));
+      border-bottom: 1px solid var(--line);
+    }
+
+    .plan-block:last-child {
+      border-bottom: 0;
+    }
+
+    .plan-block time {
+      color: var(--accent, var(--cyan));
+      font-size: 0.76rem;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .plan-block strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .plan-block span {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.92rem;
+    }
+
+    .plan-task-input {
+      width: 100%;
+      min-height: 38px;
+      margin-top: 10px;
+      padding: 0 12px;
+      color: var(--paper);
+      border: 1px solid rgba(36, 248, 255, 0.22);
+      background: rgba(5, 3, 13, 0.28);
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .plan-task-input:focus {
+      border-color: var(--cyan);
+      box-shadow: 0 0 0 4px rgba(36, 248, 255, 0.12), 0 0 18px rgba(36, 248, 255, 0.14);
+    }
+
+    .block-minutes {
+      margin-right: 14px;
+      padding: 8px 10px;
+      color: var(--paper);
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.18);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .plan-note {
+      margin: 18px 0 0;
+      color: var(--soft);
+      line-height: 1.6;
+    }
+
+    .timer-board {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.18fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .timer-display-card,
+    .timer-control-card {
+      padding: 24px;
+    }
+
+    .timer-display-card {
+      display: grid;
+      place-items: center;
+      min-height: 360px;
+    }
+
+    .timer-ring {
+      width: min(100%, 330px);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      position: relative;
+      border-radius: 50%;
+      background:
+        conic-gradient(var(--coral) calc(var(--timer-progress, 0) * 1%), rgba(255, 255, 255, 0.08) 0),
+        linear-gradient(135deg, rgba(36, 248, 255, 0.20), rgba(255, 61, 242, 0.14));
+      box-shadow: 0 0 34px rgba(255, 61, 242, 0.18), inset 0 0 24px rgba(36, 248, 255, 0.14);
+    }
+
+    .timer-ring::before {
+      content: "";
+      position: absolute;
+      inset: 16px;
+      background:
+        linear-gradient(145deg, rgba(13, 16, 32, 0.96), rgba(7, 11, 22, 0.96));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 50%;
+    }
+
+    .timer-readout {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .timer-readout span {
+      color: var(--cyan);
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .timer-readout strong {
+      font-size: clamp(3rem, 10vw, 5.4rem);
+      line-height: 0.92;
+      letter-spacing: 0;
+      text-shadow: 0 0 24px rgba(36, 248, 255, 0.18);
+    }
+
+    .timer-readout small {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .timer-control-card {
+      display: grid;
+      align-content: center;
+      gap: 18px;
+    }
+
+    .timer-mode-buttons,
+    .timer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .timer-mode-btn {
+      min-height: 40px;
+      padding: 0 14px;
+      color: var(--soft);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 6px;
+      font-weight: 850;
+    }
+
+    .timer-mode-btn[aria-pressed="true"] {
+      color: #101214;
+      border-color: rgba(36, 248, 255, 0.8);
+      background: var(--cyan);
+      box-shadow: 0 10px 30px rgba(36, 248, 255, 0.14);
+    }
+
+    .timer-status {
+      min-height: 24px;
+      margin: 0;
+      color: var(--acid);
+      font-weight: 850;
+      line-height: 1.5;
+    }
+
+    .timer-session-count {
+      margin: -6px 0 0;
+      color: var(--soft);
+      font-weight: 850;
+    }
+
+    .timer-tip-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .timer-tip {
+      padding: 13px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.035);
+      border-radius: var(--radius);
+    }
+
+    .timer-tip strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .timer-tip span {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.92rem;
+    }
+
+    .tip-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .tip-card {
+      min-height: 190px;
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tip-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-top: 3px solid var(--accent, var(--cyan));
+      opacity: 0.85;
+    }
+
+    .tip-card h3,
+    .tip-card p {
+      position: relative;
+    }
+
+    .tip-card h3 {
+      margin: 0 0 12px;
+      letter-spacing: 0;
+    }
+
+    .tip-card p {
+      margin: 0;
+      color: var(--soft);
+      line-height: 1.62;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .dashboard-card {
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+      align-content: start;
+    }
+
+    .dashboard-card h2 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .edgerunner-form {
+      display: grid;
+      gap: 10px;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .edgerunner-form input,
+    .edgerunner-form select,
+    .edgerunner-form textarea {
+      width: 100%;
+      min-height: 44px;
+      padding: 0 12px;
+      color: var(--paper);
+      border: 1px solid var(--line);
+      background: rgba(5, 3, 13, 0.34);
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .edgerunner-form textarea {
+      min-height: 92px;
+      padding-top: 11px;
+      resize: vertical;
+    }
+
+    .edgerunner-form input:focus,
+    .edgerunner-form select:focus,
+    .edgerunner-form textarea:focus {
+      border-color: var(--coral);
+      box-shadow: 0 0 0 4px rgba(255, 61, 242, 0.12);
+    }
+
+    .compact-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .log-entry,
+    .test-entry {
+      display: grid;
+      gap: 8px;
+      padding: 13px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.035);
+      border-radius: var(--radius);
+    }
+
+    .log-entry-top,
+    .test-entry-top {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .log-entry strong,
+    .test-entry strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .log-entry span,
+    .test-entry span {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .delete-btn {
+      min-height: 32px;
+      padding: 0 10px;
+      color: var(--paper);
+      border: 1px solid rgba(255, 61, 242, 0.34);
+      background: rgba(255, 61, 242, 0.10);
+      border-radius: 6px;
+      font-weight: 850;
+    }
+
+    .mock-chart {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
+      min-height: 210px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: rgba(5, 3, 13, 0.25);
+      border-radius: var(--radius);
+    }
+
+    .score-stack {
+      display: grid;
+      align-content: end;
+      gap: 6px;
+      min-height: 180px;
+    }
+
+    .score-bar {
+      min-height: 12px;
+      display: grid;
+      place-items: center;
+      color: #101214;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 900;
+      overflow: hidden;
+    }
+
+    .score-physics { background: var(--physics); }
+    .score-chemistry { background: var(--chemistry); }
+    .score-math { background: var(--math); color: var(--paper); }
+
+    .score-label {
+      color: var(--soft);
+      font-size: 0.78rem;
+      font-weight: 850;
+      text-align: center;
+    }
+
+    .revision-randomizer {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: rgba(5, 3, 13, 0.26);
+      border-radius: var(--radius);
+    }
+
+    .random-topic {
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      color: var(--paper);
+      border-left: 3px solid var(--gold);
+      background: rgba(255, 222, 89, 0.07);
+      border-radius: var(--radius);
+      font-weight: 850;
+    }
+
+    .random-topic.is-flashing {
+      animation: randomFlash 700ms ease;
+    }
+
+    @keyframes randomFlash {
+      0%, 100% { box-shadow: none; }
+      45% { box-shadow: 0 0 0 5px rgba(255, 222, 89, 0.2), 0 0 30px rgba(255, 222, 89, 0.24); }
+    }
+
+    .scratchpad-toggle {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 40;
+      min-height: 48px;
+      padding: 0 16px;
+      color: #101214;
+      border: 1px solid rgba(255, 222, 89, 0.8);
+      background: var(--gold);
+      border-radius: var(--radius);
+      box-shadow: 0 0 26px rgba(255, 222, 89, 0.22);
+      font-weight: 900;
+    }
+
+    .scratchpad {
+      position: fixed;
+      right: 18px;
+      bottom: 78px;
+      z-index: 39;
+      width: min(360px, calc(100vw - 36px));
+      display: grid;
+      gap: 10px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: rgba(30, 30, 40, 0.78);
+      backdrop-filter: blur(14px);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      transform: translateY(18px) scale(0.96);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .scratchpad.is-open {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .scratchpad h2 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    .scratchpad textarea {
+      width: 100%;
+      min-height: 210px;
+      padding: 12px;
+      color: var(--paper);
+      border: 1px solid var(--line);
+      background: rgba(5, 3, 13, 0.42);
+      border-radius: 6px;
+      resize: vertical;
+      outline: none;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 14px;
+    }
+
+    .tool-card {
+      padding: 24px;
+    }
+
+    .tool-card p {
+      color: var(--soft);
+      line-height: 1.65;
+    }
+
+    .planner-list,
+    .resource-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .planner-item,
+    .resource-item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.035);
+      border-radius: var(--radius);
+    }
+
+    .number-chip {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      color: #101214;
+      background: var(--gold);
+      border-radius: 50%;
+      font-weight: 900;
+      font-size: 0.82rem;
+    }
+
+    .planner-item strong,
+    .resource-item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .planner-item span,
+    .resource-item span {
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.92rem;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 14px;
+    }
+
+    .timeline-card {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 18px;
+      align-items: center;
+      position: relative;
+    }
+
+    .timeline-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: var(--accent, var(--cyan));
+    }
+
+    .timeline-card time {
+      color: var(--accent, var(--cyan));
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .timeline-card p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .progress-panel {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 20px;
+      align-items: center;
+      margin-top: 18px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.18);
+      border-radius: var(--radius);
+    }
+
+    .progress-ring {
+      width: 114px;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--paper);
+      background:
+        conic-gradient(var(--acid) calc(var(--progress, 0) * 1%), rgba(255, 255, 255, 0.10) 0);
+      position: relative;
+    }
+
+    .progress-ring::after {
+      content: "";
+      position: absolute;
+      inset: 10px;
+      background: var(--panel);
+      border-radius: 50%;
+    }
+
+    .progress-ring strong {
+      position: relative;
+      z-index: 1;
+      font-size: 1.4rem;
+    }
+
+    .progress-panel p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+
+    .empty-state {
+      display: none;
+      padding: 34px;
+      color: var(--soft);
+      text-align: center;
+      border: 1px dashed var(--line-strong);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    footer {
+      padding: 34px 0 50px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+    }
+
+    footer .shell {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      font-size: 0.9rem;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 600ms ease, transform 600ms ease;
+    }
+
+    .reveal.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hero .reveal {
+      opacity: 1;
+      transform: none;
+    }
+
+    @media (max-width: 980px) {
+      .hero-layout,
+      .planner-board,
+      .timer-board,
+      .dashboard-grid,
+      .tool-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-copy {
+        min-height: 430px;
+      }
+
+      .tip-grid,
+      .syllabus-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .nav {
+        min-height: auto;
+        padding: 12px 0;
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .nav-links {
+        width: 100%;
+        overflow-x: auto;
+      }
+
+      .nav-links a {
+        white-space: nowrap;
+      }
+
+      .hero {
+        min-height: auto;
+        padding-top: 30px;
+      }
+
+      h1 {
+        font-size: clamp(2.55rem, 15vw, 4.15rem);
+        line-height: 0.95;
+      }
+
+      .eyebrow {
+        font-size: 0.68rem;
+        letter-spacing: 0.12em;
+      }
+
+      .hero-copy {
+        min-height: 430px;
+        padding: 26px;
+      }
+
+      .metric-grid,
+      .field-grid,
+      .plan-summary,
+      .summary-strip,
+      .tip-grid,
+      .syllabus-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .section-title {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .timeline-card {
+        grid-template-columns: 1fr;
+      }
+
+      .plan-block {
+        grid-template-columns: 1fr;
+        padding-right: 14px;
+      }
+
+      .block-minutes {
+        width: fit-content;
+        margin-right: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+      }
+
+      .motion-canvas {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas class="motion-canvas" id="motionCanvas" aria-hidden="true"></canvas>
+
+  <header class="topbar">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="brand" href="#overview">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-text">
+          <strong>JEE Edgerunners</strong>
+          <span>Neon PCM Dashboard</span>
+        </span>
+      </a>
+      <div class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#planner">Planner</a>
+        <a href="#timer">Timer</a>
+        <a href="#analytics">Analytics</a>
+        <a href="#syllabus">Syllabus</a>
+        <a href="#strategy">Strategy</a>
+        <a href="#tips">Tips</a>
+        <a href="#method">Method</a>
+      </div>
+      <div class="streak-widget" aria-label="Consistency streak">
+        <span class="streak-icon" aria-hidden="true">🔥</span>
+        <div>
+          <span>Streak</span>
+          <strong id="streakCount">0 days</strong>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main id="overview" class="shell">
+    <section class="hero">
+      <div class="hero-layout">
+        <div class="hero-copy reveal">
+          <div>
+            <p class="eyebrow">JEE Main 2026 command center</p>
+            <h1><span>Edge</span><span>your</span><span>rank.</span></h1>
+            <p class="hero-lede">
+              A neon command deck for Mathematics, Physics, and Chemistry.
+              Track chapters, log mistakes, run sprints, and keep your next rank-moving action visible.
+            </p>
+          </div>
+          <div class="hero-actions">
+            <a class="primary-btn" href="#planner">Plan today</a>
+            <a class="ghost-btn" href="#timer">Start timer</a>
+          </div>
+        </div>
+
+        <div class="dash-panel reveal">
+          <div class="metric-grid">
+            <article class="metric-card" style="--accent: var(--cyan)">
+              <span>Total units</span>
+              <strong class="count" data-target="54">0</strong>
+              <small>Paper 1 chapters from the syllabus PDF.</small>
+            </article>
+            <article class="metric-card" style="--accent: var(--acid)">
+              <span>Subjects</span>
+              <strong class="count" data-target="3">0</strong>
+              <small>Maths, Physics, and Chemistry.</small>
+            </article>
+            <article class="metric-card" style="--accent: var(--coral)">
+              <span>Physics</span>
+              <strong class="count" data-target="20">0</strong>
+              <small>Includes experimental skills.</small>
+            </article>
+            <article class="metric-card" style="--accent: var(--gold)">
+              <span>Chemistry</span>
+              <strong class="count" data-target="20">0</strong>
+              <small>Physical, inorganic, organic, practical.</small>
+            </article>
+          </div>
+
+          <article class="focus-card">
+            <h2>Today focus</h2>
+            <p id="todayFocus">Loading a smart starting point...</p>
+            <div class="ticker" aria-label="Important topics">
+              <div class="ticker-track">
+                <span>Quadratic Equations</span>
+                <span>Mole Concept</span>
+                <span>Kinematics</span>
+                <span>Chemical Bonding</span>
+                <span>Matrices</span>
+                <span>Modern Physics</span>
+                <span>Trigonometry</span>
+                <span>Electrochemistry</span>
+                <span>Quadratic Equations</span>
+                <span>Mole Concept</span>
+                <span>Kinematics</span>
+                <span>Chemical Bonding</span>
+                <span>Matrices</span>
+                <span>Modern Physics</span>
+                <span>Trigonometry</span>
+                <span>Electrochemistry</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="planner">
+      <div class="section-title reveal">
+        <div>
+          <p class="eyebrow">Daily PCM planner</p>
+          <h2>Plan today's hours</h2>
+          <p>Enter your available study time and get a balanced drop-year plan for Mathematics, Physics, Chemistry, and revision.</p>
+        </div>
+      </div>
+
+      <div class="planner-board reveal">
+        <article class="planner-input-card">
+          <h2>Available today</h2>
+          <label class="planner-field" for="dailyHours">
+            <span>Study hours</span>
+            <input id="dailyHours" type="number" min="1" max="14" step="0.5" value="6">
+          </label>
+          <label class="planner-field" for="hoursRange">
+            <span>Adjust quickly</span>
+            <input id="hoursRange" type="range" min="1" max="14" step="0.5" value="6">
+          </label>
+          <div class="hour-presets" aria-label="Common study hour presets">
+            <button class="hour-preset" type="button" data-hours="4">4h</button>
+            <button class="hour-preset" type="button" data-hours="6">6h</button>
+            <button class="hour-preset" type="button" data-hours="8">8h</button>
+            <button class="hour-preset" type="button" data-hours="10">10h</button>
+          </div>
+          <button id="planButton" class="primary-btn" type="button">Build plan</button>
+          <p id="plannerStatus" class="planner-status is-muted" aria-live="polite">Plan ready for 6h.</p>
+        </article>
+
+        <article class="planner-output-card" aria-live="polite">
+          <div class="plan-label">Today's split</div>
+          <h2 id="planHeadline">Balanced PCM day</h2>
+          <div class="plan-summary">
+            <div class="plan-stat">
+              <span>Total</span>
+              <strong id="planTotal">6h</strong>
+            </div>
+            <div class="plan-stat">
+              <span>Revision</span>
+              <strong id="planRevision">1h 5m</strong>
+            </div>
+            <div class="plan-stat">
+              <span>Focus</span>
+              <strong id="planFocus">PCM</strong>
+            </div>
+          </div>
+          <div id="dailyPlan" class="daily-plan"></div>
+          <p id="planNote" class="plan-note"></p>
+          <div class="revision-randomizer">
+            <button id="randomRevisionButton" class="ghost-btn" type="button">Roll Random Revision Topic</button>
+            <div id="randomRevisionTopic" class="random-topic">Roll when you need an instant micro-target.</div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="timer">
+      <div class="section-title reveal">
+        <div>
+          <p class="eyebrow">Pomodoro sprint deck</p>
+          <h2>Run one clean block</h2>
+          <p>Use the timer for focused study, quick breaks, and a four-round rhythm that keeps the day moving.</p>
+        </div>
+      </div>
+
+      <div class="timer-board reveal">
+        <article class="timer-display-card">
+          <div class="timer-ring" id="timerRing" style="--timer-progress: 0">
+            <div class="timer-readout">
+              <span id="timerMode">Focus</span>
+              <strong id="timerClock">25:00</strong>
+              <small id="timerRound">Round 1 of 4</small>
+            </div>
+          </div>
+        </article>
+
+        <article class="timer-control-card">
+          <div class="timer-mode-buttons" role="group" aria-label="Pomodoro mode">
+            <button class="timer-mode-btn" type="button" data-mode="focus" aria-pressed="true">Focus 25</button>
+            <button class="timer-mode-btn" type="button" data-mode="short" aria-pressed="false">Break 5</button>
+            <button class="timer-mode-btn" type="button" data-mode="long" aria-pressed="false">Long 15</button>
+          </div>
+          <div class="timer-actions">
+            <button id="timerStart" class="primary-btn" type="button">Start</button>
+            <button id="timerPause" class="ghost-btn" type="button">Pause</button>
+            <button id="timerReset" class="ghost-btn" type="button">Reset</button>
+          </div>
+          <p id="timerStatus" class="timer-status" aria-live="polite">Ready for one focused sprint.</p>
+          <p id="timerSessions" class="timer-session-count">Sessions completed today: 0</p>
+          <div class="timer-tip-list">
+            <div class="timer-tip">
+              <strong>Before start</strong>
+              <span>Pick one chapter card and keep only that material open.</span>
+            </div>
+            <div class="timer-tip">
+              <strong>During focus</strong>
+              <span>Do not change subjects mid-sprint. Write doubts in one line and continue.</span>
+            </div>
+            <div class="timer-tip">
+              <strong>After timer</strong>
+              <span>Mark progress, fix one mistake, then take the break without guilt.</span>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="analytics">
+      <div class="section-title reveal">
+        <div>
+          <p class="eyebrow">Error book and mock analytics</p>
+          <h2>Repair the leak points</h2>
+          <p>Log mistakes, track mock scores, and turn weak spots into tomorrow's target instead of vague stress.</p>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <article class="dashboard-card reveal">
+          <h2>Digital Error Book</h2>
+          <form id="errorForm" class="edgerunner-form">
+            <div class="field-grid">
+              <input id="errorTopic" type="text" placeholder="Topic / Concept" required>
+              <select id="errorSubject" required>
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Mathematics">Mathematics</option>
+              </select>
+            </div>
+            <textarea id="errorReason" placeholder="Core reason for error: silly mistake, concept gap, formula omission..." required></textarea>
+            <button class="primary-btn" type="submit">Log mistake</button>
+          </form>
+          <div id="errorList" class="compact-list" aria-live="polite"></div>
+        </article>
+
+        <article class="dashboard-card reveal">
+          <h2>Mock Test Score Log</h2>
+          <form id="mockForm" class="edgerunner-form">
+            <div class="field-grid">
+              <input id="mockName" type="text" placeholder="Test name" required>
+              <input id="mockDate" type="date" required>
+            </div>
+            <div class="field-grid">
+              <input id="mockPhysics" type="number" min="0" max="100" placeholder="Physics" required>
+              <input id="mockChemistry" type="number" min="0" max="100" placeholder="Chemistry" required>
+            </div>
+            <input id="mockMath" type="number" min="0" max="100" placeholder="Mathematics" required>
+            <button class="primary-btn" type="submit">Save scorecard</button>
+          </form>
+          <div id="mockChart" class="mock-chart" aria-live="polite"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="syllabus">
+      <div class="section-title reveal">
+        <div>
+          <p class="eyebrow">Official syllabus turned into cards</p>
+          <h2>Explore every unit</h2>
+          <p>Use the filters and search to jump between subjects. Tick completed units and your browser will remember them.</p>
+        </div>
+      </div>
+
+      <div class="controls reveal">
+        <div class="filter-group" role="group" aria-label="Filter by subject">
+          <button class="filter-btn" data-filter="All" aria-pressed="true">All</button>
+          <button class="filter-btn" data-filter="Mathematics" aria-pressed="false">Mathematics</button>
+          <button class="filter-btn" data-filter="Physics" aria-pressed="false">Physics</button>
+          <button class="filter-btn" data-filter="Chemistry" aria-pressed="false">Chemistry</button>
+        </div>
+        <label class="search-box">
+          <input id="searchInput" type="search" placeholder="Search a chapter, topic, or subject">
+          <span aria-hidden="true"></span>
+        </label>
+      </div>
+
+      <div class="summary-strip reveal" aria-label="Syllabus summary">
+        <div class="mini-stat">
+          <span>Visible units</span>
+          <strong id="visibleCount">54</strong>
+        </div>
+        <div class="mini-stat">
+          <span>Completed</span>
+          <strong id="completeCount">0</strong>
+        </div>
+        <div class="mini-stat">
+          <span>Current filter</span>
+          <strong id="currentFilter">All</strong>
+        </div>
+        <div class="mini-stat">
+          <span>Best next</span>
+          <strong id="nextSubject">Math</strong>
+        </div>
+      </div>
+
+      <div class="progress-panel reveal">
+        <div class="progress-ring" id="progressRing" style="--progress: 0">
+          <strong id="progressText">0%</strong>
+        </div>
+        <div>
+          <h2>Your progress</h2>
+          <p id="progressLine">Start with one chapter and build momentum.</p>
+        </div>
+      </div>
+
+      <div id="syllabusGrid" class="syllabus-grid" aria-live="polite"></div>
+      <div id="emptyState" class="empty-state">No matching units. Try a simpler search.</div>
+    </section>
+
+    <section id="strategy">
+      <div class="section-title reveal">
+        <div>
+          <p class="eyebrow">A practical study flow</p>
+          <h2>Build momentum first</h2>
+          <p>This keeps the project useful: one plan for starting, one plan for revision, and one honest progress tracker.</p>
+        </div>
+      </div>
+
+      <div class="tool-grid">
+        <article class="tool-card reveal">
+          <h2>Starter sprint</h2>
+          <p>Good first chapters are the ones that unlock confidence quickly and connect to many other chapters.</p>
+          <div class="planner-list">
+            <div class="planner-item">
+              <span class="number-chip">1</span>
+              <div>
+                <strong>Foundation</strong>
+                <span>Sets, Quadratics, Mole Concept, Units and Measurements.</span>
+              </div>
+            </div>
+            <div class="planner-item">
+              <span class="number-chip">2</span>
+              <div>
+                <strong>Core practice</strong>
+                <span>Kinematics, Chemical Bonding, Matrices, Sequence and Series.</span>
+              </div>
+            </div>
+            <div class="planner-item">
+              <span class="number-chip">3</span>
+              <div>
+                <strong>Scoring revision</strong>
+                <span>Modern Physics, Biomolecules, Statistics, Periodicity.</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <div class="timeline reveal">
+          <article class="timeline-card" style="--accent: var(--acid)">
+            <time>Daily</time>
+            <div>
+              <h3>One concept block</h3>
+              <p>Pick one topic, learn the idea, solve a small set, and mark it only when you can explain it back.</p>
+            </div>
+          </article>
+          <article class="timeline-card" style="--accent: var(--cyan)">
+            <time>Weekly</time>
+            <div>
+              <h3>Mixed revision</h3>
+              <p>Mix older Maths, Physics, and Chemistry questions so memory does not stay trapped chapter-wise.</p>
+            </div>
+          </article>
+          <article class="timeline-card" style="--accent: var(--coral)">
+            <time>Monthly</time>
+            <div>
+              <h3>Mock and repair</h3>
+              <p>Use mistakes as your map. Re-study the exact concept that caused the wrong answer.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="tips">
+      <div class="section-title reveal">
+        <div>
+          <p class="eyebrow">Drop-year operating rules</p>
+          <h2>Useful tips that compound</h2>
+          <p>Small rules beat motivation spikes. Use these when the day feels messy, late, or heavy.</p>
+        </div>
+      </div>
+
+      <div class="tip-grid">
+        <article class="tip-card reveal" style="--accent: var(--cyan)">
+          <h3>Repair before more mocks</h3>
+          <p>After every mock, choose the three mistakes that cost the most marks and repair those before taking another test.</p>
+        </article>
+        <article class="tip-card reveal" style="--accent: var(--coral)">
+          <h3>Chemistry needs recall</h3>
+          <p>Keep a daily 20-minute NCERT and formula recall block. Chemistry improves faster when memory is revisited often.</p>
+        </article>
+        <article class="tip-card reveal" style="--accent: var(--acid)">
+          <h3>Maths needs rough work</h3>
+          <p>Do fewer questions neatly. Track where your solution broke: concept, algebra, speed, or question reading.</p>
+        </article>
+        <article class="tip-card reveal" style="--accent: var(--gold)">
+          <h3>Physics needs diagrams</h3>
+          <p>Draw the situation before formulas. Most mechanics and electricity mistakes start before calculation begins.</p>
+        </article>
+        <article class="tip-card reveal" style="--accent: var(--violet)">
+          <h3>Protect the first block</h3>
+          <p>Your first study block decides the tone. Start with a chapter you can actually finish or repair today.</p>
+        </article>
+        <article class="tip-card reveal" style="--accent: var(--cyan)">
+          <h3>Sunday is calibration</h3>
+          <p>Use one weekly reset to update weak topics, mock scores, backlog, and next week's most important chapters.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="method">
+      <div class="section-title reveal">
+        <div>
+          <p class="eyebrow">How to use the dashboard</p>
+          <h2>Simple loop</h2>
+          <p>A website is strongest when it helps you take action. This one is built around a small repeatable loop.</p>
+        </div>
+      </div>
+
+      <div class="tool-grid">
+        <article class="tool-card reveal">
+          <h2>Study loop</h2>
+          <div class="resource-list">
+            <div class="resource-item">
+              <span class="number-chip">A</span>
+              <div>
+                <strong>Learn</strong>
+                <span>Watch or read one concept until the basic idea is clear.</span>
+              </div>
+            </div>
+            <div class="resource-item">
+              <span class="number-chip">B</span>
+              <div>
+                <strong>Solve</strong>
+                <span>Do easy and medium questions first. Speed comes after understanding.</span>
+              </div>
+            </div>
+            <div class="resource-item">
+              <span class="number-chip">C</span>
+              <div>
+                <strong>Review</strong>
+                <span>Write why each mistake happened, then revisit that exact idea.</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="tool-card reveal">
+          <h2>What changed</h2>
+          <p>
+            The page now uses HTML for structure, CSS for layout and modern styling, and JavaScript for movement,
+            search, filters, saved progress, animated counters, scroll reveals, and the moving background.
+          </p>
+          <p>
+            It is still a single file, which makes it friendly for a first project. You can open it directly and learn from it slowly.
+          </p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="shell">
+      <span>JEE Edgerunners | Built from your syllabus PDF</span>
+      <span>Progress saves on this browser</span>
+    </div>
+  </footer>
+
+  <aside id="scratchpad" class="scratchpad" aria-label="Floating scratchpad">
+    <h2>Scratchpad + Formula Pin</h2>
+    <textarea id="scratchpadText" placeholder="Pin a formula, rough calculation, doubt, or one-line target..."></textarea>
+  </aside>
+  <button id="scratchpadToggle" class="scratchpad-toggle" type="button" aria-expanded="false">Scratchpad</button>
+
+  <script>
+    const syllabus = [
+      { subject: "Mathematics", unit: "Unit 1", title: "Sets, Relations and Functions", track: "Foundation", level: "Core", detail: "Sets, operations on sets, relations, equivalence relations, functions, and composition." },
+      { subject: "Mathematics", unit: "Unit 2", title: "Complex Numbers and Quadratic Equations", track: "Algebra", level: "Priority", detail: "Complex plane, modulus, argument, quadratic equations, roots, and relations between roots and coefficients." },
+      { subject: "Mathematics", unit: "Unit 3", title: "Matrices and Determinants", track: "Algebra", level: "Scoring", detail: "Matrix algebra, determinants, inverse, adjoint, area of triangles, and simultaneous equations." },
+      { subject: "Mathematics", unit: "Unit 4", title: "Permutations and Combinations", track: "Counting", level: "Core", detail: "Fundamental principle of counting, permutations, combinations, and simple applications." },
+      { subject: "Mathematics", unit: "Unit 5", title: "Binomial Theorem", track: "Algebra", level: "Compact", detail: "Positive integral index, general term, middle term, and direct applications." },
+      { subject: "Mathematics", unit: "Unit 6", title: "Sequence and Series", track: "Algebra", level: "Priority", detail: "Arithmetic progression, geometric progression, and relation between arithmetic and geometric means." },
+      { subject: "Mathematics", unit: "Unit 7", title: "Limit, Continuity and Differentiability", track: "Calculus", level: "Heavy", detail: "Functions, limits, continuity, derivatives, monotonicity, maxima, and minima." },
+      { subject: "Mathematics", unit: "Unit 8", title: "Integral Calculus", track: "Calculus", level: "Heavy", detail: "Indefinite and definite integration, standard forms, substitution, parts, fractions, and areas." },
+      { subject: "Mathematics", unit: "Unit 9", title: "Differential Equations", track: "Calculus", level: "Compact", detail: "Order, degree, separation of variables, homogeneous equations, and linear equations." },
+      { subject: "Mathematics", unit: "Unit 10", title: "Coordinate Geometry", track: "Geometry", level: "Core", detail: "Straight lines, circles, conic sections, distance, section formula, and important centers." },
+      { subject: "Mathematics", unit: "Unit 11", title: "Three Dimensional Geometry", track: "Geometry", level: "Scoring", detail: "Coordinates in space, direction cosines, direction ratios, lines, planes, and distances." },
+      { subject: "Mathematics", unit: "Unit 12", title: "Vector Algebra", track: "Geometry", level: "Scoring", detail: "Vectors, addition, scalar product, vector product, and geometric applications." },
+      { subject: "Mathematics", unit: "Unit 13", title: "Statistics and Probability", track: "Data", level: "Scoring", detail: "Measures of dispersion, probability, Bayes theorem, and probability distributions." },
+      { subject: "Mathematics", unit: "Unit 14", title: "Trigonometry", track: "Foundation", level: "Priority", detail: "Trigonometric identities, equations, inverse trigonometric functions, and triangle properties." },
+
+      { subject: "Physics", unit: "Unit 1", title: "Units and Measurements", track: "Basics", level: "Foundation", detail: "SI units, dimensions, errors, significant figures, and dimensional analysis." },
+      { subject: "Physics", unit: "Unit 2", title: "Kinematics", track: "Mechanics", level: "Priority", detail: "Motion in one and two dimensions, projectile motion, relative velocity, and graphs." },
+      { subject: "Physics", unit: "Unit 3", title: "Laws of Motion", track: "Mechanics", level: "Core", detail: "Newton laws, friction, circular motion, connected bodies, and equilibrium." },
+      { subject: "Physics", unit: "Unit 4", title: "Work, Energy and Power", track: "Mechanics", level: "Core", detail: "Work-energy theorem, kinetic and potential energy, power, and conservation of energy." },
+      { subject: "Physics", unit: "Unit 5", title: "Rotational Motion", track: "Mechanics", level: "Heavy", detail: "Torque, angular momentum, moment of inertia, rolling motion, and rigid body dynamics." },
+      { subject: "Physics", unit: "Unit 6", title: "Gravitation", track: "Mechanics", level: "Core", detail: "Universal law, acceleration due to gravity, orbital motion, escape speed, and satellites." },
+      { subject: "Physics", unit: "Unit 7", title: "Properties of Solids and Liquids", track: "Matter", level: "Core", detail: "Elasticity, viscosity, surface tension, fluid pressure, and Bernoulli principle." },
+      { subject: "Physics", unit: "Unit 8", title: "Thermodynamics", track: "Heat", level: "Core", detail: "Thermal equilibrium, first law, heat engines, refrigerators, and thermodynamic processes." },
+      { subject: "Physics", unit: "Unit 9", title: "Kinetic Theory of Gases", track: "Heat", level: "Compact", detail: "Equation of state, kinetic interpretation of temperature, degrees of freedom, and mean free path." },
+      { subject: "Physics", unit: "Unit 10", title: "Oscillations and Waves", track: "Waves", level: "Core", detail: "Simple harmonic motion, wave motion, sound waves, superposition, and Doppler effect." },
+      { subject: "Physics", unit: "Unit 11", title: "Electrostatics", track: "Electricity", level: "Heavy", detail: "Coulomb law, electric field, potential, capacitors, Gauss law, and dielectrics." },
+      { subject: "Physics", unit: "Unit 12", title: "Current Electricity", track: "Electricity", level: "Priority", detail: "Ohm law, circuits, Kirchhoff laws, Wheatstone bridge, potentiometer, and cells." },
+      { subject: "Physics", unit: "Unit 13", title: "Magnetic Effects of Current and Magnetism", track: "Magnetism", level: "Core", detail: "Biot-Savart law, Ampere law, Lorentz force, moving coil galvanometer, and magnetic materials." },
+      { subject: "Physics", unit: "Unit 14", title: "Electromagnetic Induction and Alternating Currents", track: "Magnetism", level: "Core", detail: "Faraday law, Lenz law, inductance, AC circuits, resonance, and transformers." },
+      { subject: "Physics", unit: "Unit 15", title: "Electromagnetic Waves", track: "Modern", level: "Compact", detail: "Displacement current, electromagnetic wave properties, and spectrum." },
+      { subject: "Physics", unit: "Unit 16", title: "Optics", track: "Waves", level: "Heavy", detail: "Ray optics, instruments, wave optics, interference, diffraction, and polarization." },
+      { subject: "Physics", unit: "Unit 17", title: "Dual Nature of Matter and Radiation", track: "Modern", level: "Scoring", detail: "Photoelectric effect, de Broglie wavelength, and matter waves." },
+      { subject: "Physics", unit: "Unit 18", title: "Atoms and Nuclei", track: "Modern", level: "Scoring", detail: "Atomic models, spectra, radioactivity, nuclear reactions, binding energy, and fission." },
+      { subject: "Physics", unit: "Unit 19", title: "Electronic Devices", track: "Modern", level: "Compact", detail: "Semiconductors, diodes, transistors, logic gates, and basic circuits." },
+      { subject: "Physics", unit: "Unit 20", title: "Experimental Skills", track: "Practical", level: "Scoring", detail: "Measurement instruments, experiments, graphing, and error analysis from the practical syllabus." },
+
+      { subject: "Chemistry", unit: "Unit 1", title: "Some Basic Concepts in Chemistry", track: "Physical", level: "Foundation", detail: "Matter, laws of chemical combination, mole concept, formulae, equations, and stoichiometry." },
+      { subject: "Chemistry", unit: "Unit 2", title: "Atomic Structure", track: "Physical", level: "Core", detail: "Radiation, spectra, Bohr model, quantum numbers, orbitals, and electronic configuration." },
+      { subject: "Chemistry", unit: "Unit 3", title: "Chemical Bonding and Molecular Structure", track: "Physical", level: "Priority", detail: "Ionic and covalent bonds, VSEPR, hybridization, MOT, bond order, and hydrogen bonding." },
+      { subject: "Chemistry", unit: "Unit 4", title: "Chemical Thermodynamics", track: "Physical", level: "Core", detail: "System, surroundings, laws of thermodynamics, enthalpy, entropy, Gibbs energy, and equilibrium constant." },
+      { subject: "Chemistry", unit: "Unit 5", title: "Solutions", track: "Physical", level: "Core", detail: "Concentration terms, Raoult law, colligative properties, molar mass, and van't Hoff factor." },
+      { subject: "Chemistry", unit: "Unit 6", title: "Equilibrium", track: "Physical", level: "Heavy", detail: "Chemical and ionic equilibrium, acids and bases, pH, hydrolysis, solubility product, and buffers." },
+      { subject: "Chemistry", unit: "Unit 7", title: "Redox Reactions and Electrochemistry", track: "Physical", level: "Priority", detail: "Oxidation numbers, conductance, electrochemical cells, Nernst equation, and Gibbs energy relation." },
+      { subject: "Chemistry", unit: "Unit 8", title: "Chemical Kinetics", track: "Physical", level: "Scoring", detail: "Rate, order, molecularity, rate law, zero and first order reactions, half-life, and Arrhenius theory." },
+      { subject: "Chemistry", unit: "Unit 9", title: "Classification of Elements and Periodicity", track: "Inorganic", level: "Scoring", detail: "Periodic table, periodic trends, valence, oxidation states, and chemical reactivity." },
+      { subject: "Chemistry", unit: "Unit 10", title: "p-Block Elements", track: "Inorganic", level: "Core", detail: "Groups 13 to 18, electronic configuration, trends, and unique behavior of first elements." },
+      { subject: "Chemistry", unit: "Unit 11", title: "d- and f-Block Elements", track: "Inorganic", level: "Core", detail: "Transition elements, lanthanoids, actinoids, trends, colors, magnetism, and important compounds." },
+      { subject: "Chemistry", unit: "Unit 12", title: "Coordination Compounds", track: "Inorganic", level: "Priority", detail: "Werner theory, ligands, nomenclature, isomerism, bonding, color, and magnetic properties." },
+      { subject: "Chemistry", unit: "Unit 13", title: "Purification and Characterisation of Organic Compounds", track: "Organic", level: "Compact", detail: "Crystallization, distillation, chromatography, qualitative analysis, and quantitative analysis basics." },
+      { subject: "Chemistry", unit: "Unit 14", title: "Some Basic Principles of Organic Chemistry", track: "Organic", level: "Foundation", detail: "Hybridization, nomenclature, isomerism, intermediates, electronic effects, and reaction types." },
+      { subject: "Chemistry", unit: "Unit 15", title: "Hydrocarbons", track: "Organic", level: "Core", detail: "Alkanes, alkenes, alkynes, aromatic hydrocarbons, reactions, mechanisms, and directive influence." },
+      { subject: "Chemistry", unit: "Unit 16", title: "Organic Compounds Containing Halogens", track: "Organic", level: "Core", detail: "Preparation, properties, C-X bond, substitution mechanisms, uses, and environmental effects." },
+      { subject: "Chemistry", unit: "Unit 17", title: "Organic Compounds Containing Oxygen", track: "Organic", level: "Heavy", detail: "Alcohols, phenols, ethers, aldehydes, ketones, carboxylic acids, reactions, and tests." },
+      { subject: "Chemistry", unit: "Unit 18", title: "Organic Compounds Containing Nitrogen", track: "Organic", level: "Compact", detail: "Amines, diazonium salts, nomenclature, structure, basicity, and identification." },
+      { subject: "Chemistry", unit: "Unit 19", title: "Biomolecules", track: "Organic", level: "Scoring", detail: "Carbohydrates, proteins, vitamins, nucleic acids, enzymes, hormones, DNA, and RNA." },
+      { subject: "Chemistry", unit: "Unit 20", title: "Principles Related to Practical Chemistry", track: "Practical", level: "Scoring", detail: "Functional group tests, inorganic and organic preparations, titrations, salt analysis, and experiments." }
+    ];
+
+    const focusIdeas = [
+      "Start with Quadratic Equations plus Mole Concept. Both give quick confidence and appear everywhere.",
+      "Do Kinematics before the deeper mechanics units. It trains graphs, equations, and problem reading.",
+      "Chemical Bonding is worth patience. It supports inorganic and organic understanding later.",
+      "Try Matrices, Statistics, Modern Physics, and Biomolecules when you need compact revision wins.",
+      "For one session: learn one concept, solve ten questions, write two mistakes, then stop cleanly."
+    ];
+
+    const grid = document.querySelector("#syllabusGrid");
+    const searchInput = document.querySelector("#searchInput");
+    const filterButtons = [...document.querySelectorAll(".filter-btn")];
+    const visibleCount = document.querySelector("#visibleCount");
+    const completeCount = document.querySelector("#completeCount");
+    const currentFilter = document.querySelector("#currentFilter");
+    const nextSubject = document.querySelector("#nextSubject");
+    const progressRing = document.querySelector("#progressRing");
+    const progressText = document.querySelector("#progressText");
+    const progressLine = document.querySelector("#progressLine");
+    const emptyState = document.querySelector("#emptyState");
+    const todayFocus = document.querySelector("#todayFocus");
+    const dailyHoursInput = document.querySelector("#dailyHours");
+    const hoursRange = document.querySelector("#hoursRange");
+    const planButton = document.querySelector("#planButton");
+    const plannerStatus = document.querySelector("#plannerStatus");
+    const hourPresets = [...document.querySelectorAll(".hour-preset")];
+    const plannerOutputCard = document.querySelector(".planner-output-card");
+    const planHeadline = document.querySelector("#planHeadline");
+    const planTotal = document.querySelector("#planTotal");
+    const planRevision = document.querySelector("#planRevision");
+    const planFocus = document.querySelector("#planFocus");
+    const dailyPlan = document.querySelector("#dailyPlan");
+    const planNote = document.querySelector("#planNote");
+    const timerRing = document.querySelector("#timerRing");
+    const timerMode = document.querySelector("#timerMode");
+    const timerClock = document.querySelector("#timerClock");
+    const timerRound = document.querySelector("#timerRound");
+    const timerStart = document.querySelector("#timerStart");
+    const timerPause = document.querySelector("#timerPause");
+    const timerReset = document.querySelector("#timerReset");
+    const timerStatus = document.querySelector("#timerStatus");
+    const timerSessions = document.querySelector("#timerSessions");
+    const timerModeButtons = [...document.querySelectorAll(".timer-mode-btn")];
+    const streakCount = document.querySelector("#streakCount");
+    const errorForm = document.querySelector("#errorForm");
+    const errorTopic = document.querySelector("#errorTopic");
+    const errorSubject = document.querySelector("#errorSubject");
+    const errorReason = document.querySelector("#errorReason");
+    const errorList = document.querySelector("#errorList");
+    const mockForm = document.querySelector("#mockForm");
+    const mockName = document.querySelector("#mockName");
+    const mockDate = document.querySelector("#mockDate");
+    const mockPhysics = document.querySelector("#mockPhysics");
+    const mockChemistry = document.querySelector("#mockChemistry");
+    const mockMath = document.querySelector("#mockMath");
+    const mockChart = document.querySelector("#mockChart");
+    const randomRevisionButton = document.querySelector("#randomRevisionButton");
+    const randomRevisionTopic = document.querySelector("#randomRevisionTopic");
+    const scratchpad = document.querySelector("#scratchpad");
+    const scratchpadToggle = document.querySelector("#scratchpadToggle");
+    const scratchpadText = document.querySelector("#scratchpadText");
+    const storageKey = "jee-nexus-progress-v1";
+    const plannerStorageKey = "jee-nexus-daily-hours-v1";
+    const plannerTasksKey = "edgerunners-planner-tasks";
+    const errorLogKey = "edgerunners-error-log";
+    const mockLogKey = "edgerunners-mock-log";
+    const scratchpadKey = "edgerunners-scratchpad";
+    const lastActiveDateKey = "last-active-date";
+    const streakKey = "edgerunners-streak-count";
+    const timerSessionKey = "edgerunners-pomodoro-sessions";
+
+    let activeFilter = "All";
+    let completed = new Set(JSON.parse(localStorage.getItem(storageKey) || "[]"));
+    let plannerTasks = JSON.parse(localStorage.getItem(plannerTasksKey) || "{}");
+    let errorLog = JSON.parse(localStorage.getItem(errorLogKey) || "[]");
+    let mockLog = JSON.parse(localStorage.getItem(mockLogKey) || "[]");
+    let plannerFeedbackTimer;
+    let timerInterval;
+    let timerActiveMode = "focus";
+    let timerSeconds = 25 * 60;
+    let timerDuration = 25 * 60;
+    let timerFocusRound = 1;
+    let timerRunning = false;
+
+    function unitId(item) {
+      return `${item.subject}-${item.unit}-${item.title}`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    }
+
+    function subjectShort(subject) {
+      return subject === "Mathematics" ? "Math" : subject;
+    }
+
+    function escapeHTML(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    function todayKey() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function daysBetween(fromDate, toDate) {
+      const start = new Date(`${fromDate}T00:00:00`);
+      const end = new Date(`${toDate}T00:00:00`);
+      return Math.round((end - start) / 86400000);
+    }
+
+    function updateStreakDisplay() {
+      const lastActive = localStorage.getItem(lastActiveDateKey);
+      let streak = Number(localStorage.getItem(streakKey) || "0");
+      if (lastActive && daysBetween(lastActive, todayKey()) > 2) {
+        streak = 0;
+        localStorage.setItem(streakKey, "0");
+      }
+      streakCount.textContent = `${streak} ${streak === 1 ? "day" : "days"}`;
+    }
+
+    function recordActivity() {
+      const today = todayKey();
+      const lastActive = localStorage.getItem(lastActiveDateKey);
+      let streak = Number(localStorage.getItem(streakKey) || "0");
+
+      if (!lastActive) {
+        streak = 1;
+      } else {
+        const gap = daysBetween(lastActive, today);
+        if (gap === 1) streak += 1;
+        if (gap > 2) streak = 1;
+        if (gap === 2) streak = Math.max(1, streak);
+      }
+
+      localStorage.setItem(lastActiveDateKey, today);
+      localStorage.setItem(streakKey, String(Math.min(streak, 999)));
+      updateStreakDisplay();
+    }
+
+    function savePlannerTasks() {
+      localStorage.setItem(plannerTasksKey, JSON.stringify(plannerTasks));
+    }
+
+    function renderErrorLog() {
+      const recent = errorLog.slice(-3).reverse();
+      errorList.innerHTML = recent.length ? recent.map((entry) => `
+        <div class="log-entry">
+          <div class="log-entry-top">
+            <div>
+              <strong>${escapeHTML(entry.topic)}</strong>
+              <span>${escapeHTML(entry.subject)} | ${escapeHTML(entry.date)}</span>
+            </div>
+            <button class="delete-btn" type="button" data-error-id="${entry.id}">Delete</button>
+          </div>
+          <span>${escapeHTML(entry.reason)}</span>
+        </div>
+      `).join("") : `<div class="log-entry"><span>No mistakes logged yet. Add the next one you repair.</span></div>`;
+    }
+
+    function renderMockChart() {
+      const recent = mockLog.slice(-3);
+      mockChart.innerHTML = recent.length ? recent.map((test) => {
+        const physicsHeight = Math.max(12, Math.round((test.physics / 100) * 60));
+        const chemistryHeight = Math.max(12, Math.round((test.chemistry / 100) * 60));
+        const mathHeight = Math.max(12, Math.round((test.math / 100) * 60));
+        return `
+          <div class="score-stack">
+            <div class="score-bar score-physics" style="height:${physicsHeight}px">P ${test.physics}</div>
+            <div class="score-bar score-chemistry" style="height:${chemistryHeight}px">C ${test.chemistry}</div>
+            <div class="score-bar score-math" style="height:${mathHeight}px">M ${test.math}</div>
+            <div class="score-label">${test.total}/300<br>${escapeHTML(test.name)}</div>
+          </div>
+        `;
+      }).join("") : `<div class="test-entry"><span>No mock tests logged yet.</span></div>`;
+    }
+
+    function sessionData() {
+      const saved = JSON.parse(localStorage.getItem(timerSessionKey) || "{}");
+      return saved.date === todayKey() ? saved : { date: todayKey(), count: 0 };
+    }
+
+    function renderTimerSessions() {
+      const sessions = sessionData();
+      timerSessions.textContent = `Sessions completed today: ${sessions.count}`;
+    }
+
+    function incrementTimerSessions() {
+      const sessions = sessionData();
+      sessions.count += 1;
+      localStorage.setItem(timerSessionKey, JSON.stringify(sessions));
+      renderTimerSessions();
+    }
+
+    function playTimerChime() {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const context = new AudioContext();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, context.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(1320, context.currentTime + 0.16);
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.32);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.34);
+    }
+
+    function setupScratchpad() {
+      scratchpadText.value = localStorage.getItem(scratchpadKey) || "";
+      scratchpadText.addEventListener("input", () => {
+        localStorage.setItem(scratchpadKey, scratchpadText.value);
+      });
+      scratchpadToggle.addEventListener("click", () => {
+        const isOpen = scratchpad.classList.toggle("is-open");
+        scratchpadToggle.setAttribute("aria-expanded", String(isOpen));
+        scratchpadToggle.textContent = isOpen ? "Close pad" : "Scratchpad";
+        if (isOpen) scratchpadText.focus();
+      });
+    }
+
+    function renderCards() {
+      const query = searchInput.value.trim().toLowerCase();
+      const filtered = syllabus.filter((item) => {
+        const matchesSubject = activeFilter === "All" || item.subject === activeFilter;
+        const haystack = `${item.subject} ${item.unit} ${item.title} ${item.track} ${item.level} ${item.detail}`.toLowerCase();
+        return matchesSubject && haystack.includes(query);
+      });
+
+      grid.innerHTML = filtered.map((item) => {
+        const id = unitId(item);
+        const done = completed.has(id);
+        return `
+          <article class="syllabus-card subject-${item.subject.toLowerCase()} ${done ? "complete" : ""}" data-id="${id}">
+            <div>
+              <div class="card-top">
+                <span class="unit-kicker">${item.subject} | ${item.unit}</span>
+                <label class="check-wrap" aria-label="Mark ${item.title} complete">
+                  <input type="checkbox" ${done ? "checked" : ""} data-id="${id}">
+                </label>
+              </div>
+              <h3>${item.title}</h3>
+              <p>${item.detail}</p>
+            </div>
+            <div class="tag-row">
+              <span class="tag">${item.track}</span>
+              <span class="tag">${item.level}</span>
+              <span class="tag">${subjectShort(item.subject)}</span>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      visibleCount.textContent = filtered.length;
+      currentFilter.textContent = activeFilter === "All" ? "All" : subjectShort(activeFilter);
+      emptyState.style.display = filtered.length ? "none" : "block";
+      updateProgress();
+      attachCardTilt();
+    }
+
+    function updateProgress() {
+      localStorage.setItem(storageKey, JSON.stringify([...completed]));
+      const percent = Math.round((completed.size / syllabus.length) * 100);
+      completeCount.textContent = completed.size;
+      progressRing.style.setProperty("--progress", percent);
+      progressText.textContent = `${percent}%`;
+      progressLine.textContent = completed.size
+        ? `${completed.size} of ${syllabus.length} units marked complete. Keep the streak calm and steady.`
+        : "Start with one chapter and build momentum.";
+
+      const subjectRemaining = ["Mathematics", "Physics", "Chemistry"]
+        .map((subject) => ({
+          subject,
+          left: syllabus.filter((item) => item.subject === subject && !completed.has(unitId(item))).length
+        }))
+      .sort((a, b) => b.left - a.left)[0];
+      nextSubject.textContent = subjectRemaining ? subjectShort(subjectRemaining.subject) : "Done";
+    }
+
+    function clampNumber(value, min, max) {
+      if (Number.isNaN(value)) return min;
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function roundToFive(minutes) {
+      return Math.round(minutes / 5) * 5;
+    }
+
+    function formatMinutes(minutes) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      if (!hours) return `${mins}m`;
+      if (!mins) return `${hours}h`;
+      return `${hours}h ${mins}m`;
+    }
+
+    function nextTopicFor(subject) {
+      const levelOrder = ["Foundation", "Priority", "Scoring", "Core", "Compact", "Heavy"];
+      const remaining = syllabus
+        .filter((item) => item.subject === subject && !completed.has(unitId(item)))
+        .sort((a, b) => levelOrder.indexOf(a.level) - levelOrder.indexOf(b.level));
+      return remaining[0]?.title || "Mixed PYQ revision";
+    }
+
+    function revisionTopic() {
+      const completedIds = [...completed].reverse();
+      const latestDone = completedIds
+        .map((id) => syllabus.find((item) => unitId(item) === id))
+        .find(Boolean);
+      return latestDone ? `${latestDone.title} recall` : "Formula notebook and mistake log";
+    }
+
+    function rollRevisionTopic() {
+      const errorTopics = errorLog.map((entry) => entry.topic).filter(Boolean);
+      const highWeightage = [
+        "Quadratic Equations",
+        "Kinematics",
+        "Chemical Bonding",
+        "Current Electricity",
+        "Matrices and Determinants",
+        "Electrostatics",
+        "Mole Concept",
+        "Coordinate Geometry",
+        "Thermodynamics",
+        "Organic Reaction Mechanisms"
+      ];
+      const pool = errorTopics.length ? errorTopics : highWeightage;
+      const topic = pool[Math.floor(Math.random() * pool.length)];
+      randomRevisionTopic.textContent = topic;
+      randomRevisionTopic.classList.remove("is-flashing");
+      void randomRevisionTopic.offsetWidth;
+      randomRevisionTopic.classList.add("is-flashing");
+      recordActivity();
+    }
+
+    function buildPlan(hours) {
+      const totalMinutes = roundToFive(clampNumber(hours, 1, 14) * 60);
+      const revisionMinutes = totalMinutes <= 90
+        ? 15
+        : totalMinutes <= 180
+          ? 25
+          : Math.min(90, Math.max(35, roundToFive(totalMinutes * 0.18)));
+      const studyMinutes = totalMinutes - revisionMinutes;
+      const mathMinutes = roundToFive(studyMinutes * 0.34);
+      const physicsMinutes = roundToFive(studyMinutes * 0.33);
+      const chemistryMinutes = studyMinutes - mathMinutes - physicsMinutes;
+
+      return {
+        totalMinutes,
+        revisionMinutes,
+        blocks: [
+          {
+            label: "Maths",
+            title: "Mathematics practice",
+            detail: nextTopicFor("Mathematics"),
+            minutes: mathMinutes,
+            accent: "var(--math)"
+          },
+          {
+            label: "Physics",
+            title: "Physics concept + examples",
+            detail: nextTopicFor("Physics"),
+            minutes: physicsMinutes,
+            accent: "var(--physics)"
+          },
+          {
+            label: "Chemistry",
+            title: "Chemistry NCERT + problems",
+            detail: nextTopicFor("Chemistry"),
+            minutes: chemistryMinutes,
+            accent: "var(--chemistry)"
+          },
+          {
+            label: "Revision",
+            title: "Recall and repair",
+            detail: revisionTopic(),
+            minutes: revisionMinutes,
+            accent: "var(--gold)"
+          }
+        ]
+      };
+    }
+
+    function updatePresetButtons(hours) {
+      hourPresets.forEach((button) => {
+        button.setAttribute("aria-pressed", String(Number(button.dataset.hours) === hours));
+      });
+    }
+
+    function showPlannerFeedback(hours, message) {
+      clearTimeout(plannerFeedbackTimer);
+      const formattedHours = formatMinutes(roundToFive(hours * 60));
+
+      plannerStatus.textContent = `${message} for ${formattedHours}.`;
+      plannerStatus.classList.remove("is-muted");
+      planButton.textContent = "Plan updated";
+
+      plannerOutputCard.classList.remove("is-updated");
+      void plannerOutputCard.offsetWidth;
+      plannerOutputCard.classList.add("is-updated");
+
+      plannerFeedbackTimer = setTimeout(() => {
+        planButton.textContent = "Build plan";
+        plannerStatus.textContent = `Plan ready for ${formattedHours}.`;
+        plannerStatus.classList.add("is-muted");
+        plannerOutputCard.classList.remove("is-updated");
+      }, 1100);
+    }
+
+    function renderDailyPlanner(options = {}) {
+      const hours = clampNumber(Number(dailyHoursInput.value), 1, 14);
+      const normalizedHours = Math.round(hours * 2) / 2;
+      dailyHoursInput.value = normalizedHours;
+      hoursRange.value = normalizedHours;
+      localStorage.setItem(plannerStorageKey, String(normalizedHours));
+      updatePresetButtons(normalizedHours);
+
+      const plan = buildPlan(normalizedHours);
+      planHeadline.textContent = normalizedHours >= 8 ? "Deep work PCM day" : normalizedHours >= 5 ? "Balanced PCM day" : "Compact PCM day";
+      planTotal.textContent = formatMinutes(plan.totalMinutes);
+      planRevision.textContent = formatMinutes(plan.revisionMinutes);
+      planFocus.textContent = nextSubject.textContent === "Done" ? "Revise" : nextSubject.textContent;
+      dailyPlan.innerHTML = plan.blocks.map((block) => `
+        <div class="plan-block" style="--accent: ${block.accent}">
+          <time>${block.label}</time>
+          <div>
+            <strong>${block.title}</strong>
+            <span>${block.detail}</span>
+            <input class="plan-task-input" type="text" data-task-key="${block.label.toLowerCase()}" value="${escapeHTML(plannerTasks[block.label.toLowerCase()] || "")}" placeholder="Specific goal for this block">
+          </div>
+          <span class="block-minutes">${formatMinutes(block.minutes)}</span>
+        </div>
+      `).join("");
+      planNote.textContent = "Keep breaks outside these blocks. After finishing, mark the related chapter cards so tomorrow's plan becomes smarter.";
+      plannerStatus.textContent = `Plan ready for ${formatMinutes(plan.totalMinutes)}.`;
+      plannerStatus.classList.add("is-muted");
+
+      if (options.feedback) {
+        showPlannerFeedback(normalizedHours, options.message || "Plan updated");
+      }
+    }
+
+    function setPlannerHours(value, message = "Plan updated") {
+      dailyHoursInput.value = value;
+      renderDailyPlanner({ feedback: true, message });
+    }
+
+    const timerModes = {
+      focus: { label: "Focus", seconds: 25 * 60, status: "Focus sprint loaded. Pick one task and start." },
+      short: { label: "Short break", seconds: 5 * 60, status: "Short break loaded. Step away from the screen." },
+      long: { label: "Long reset", seconds: 15 * 60, status: "Long reset loaded. Breathe, hydrate, reset posture." }
+    };
+
+    function formatTimer(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function updateTimerModeButtons() {
+      timerModeButtons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.mode === timerActiveMode));
+      });
+    }
+
+    function renderTimer() {
+      const progress = timerDuration ? Math.round(((timerDuration - timerSeconds) / timerDuration) * 100) : 0;
+      const mode = timerModes[timerActiveMode];
+      timerRing.style.setProperty("--timer-progress", progress);
+      timerMode.textContent = mode.label;
+      timerClock.textContent = formatTimer(timerSeconds);
+      timerRound.textContent = `Round ${timerFocusRound} of 4`;
+      updateTimerModeButtons();
+    }
+
+    function setTimerMode(modeName, statusText = timerModes[modeName].status) {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      timerActiveMode = modeName;
+      timerDuration = timerModes[modeName].seconds;
+      timerSeconds = timerDuration;
+      timerStart.textContent = "Start";
+      timerStatus.textContent = statusText;
+      renderTimer();
+    }
+
+    function completeTimer() {
+      clearInterval(timerInterval);
+      timerRunning = false;
+
+      if (timerActiveMode === "focus") {
+        const nextMode = timerFocusRound === 4 ? "long" : "short";
+        const finishedRound = timerFocusRound;
+        timerFocusRound = timerFocusRound === 4 ? 1 : timerFocusRound + 1;
+        incrementTimerSessions();
+        playTimerChime();
+        recordActivity();
+        setTimerMode(nextMode, `Focus round ${finishedRound} done. Take the break.`);
+        return;
+      }
+
+      setTimerMode("focus", "Break done. Start the next focused sprint.");
+    }
+
+    function startTimer() {
+      if (timerRunning) return;
+      timerRunning = true;
+      timerStart.textContent = "Running";
+      timerStatus.textContent = timerActiveMode === "focus"
+        ? "Sprint running. Stay on one task."
+        : "Break running. Recover properly.";
+
+      timerInterval = setInterval(() => {
+        timerSeconds -= 1;
+        if (timerSeconds <= 0) {
+          timerSeconds = 0;
+          renderTimer();
+          completeTimer();
+          return;
+        }
+        renderTimer();
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      if (!timerRunning) {
+        timerStatus.textContent = "Timer is already paused.";
+        return;
+      }
+      clearInterval(timerInterval);
+      timerRunning = false;
+      timerStart.textContent = "Resume";
+      timerStatus.textContent = "Paused. Resume when you are ready.";
+      renderTimer();
+    }
+
+    function resetTimer() {
+      setTimerMode(timerActiveMode, "Timer reset for this mode.");
+    }
+
+    grid.addEventListener("change", (event) => {
+      const checkbox = event.target.closest("input[type='checkbox']");
+      if (!checkbox) return;
+      const id = checkbox.dataset.id;
+      if (checkbox.checked) {
+        completed.add(id);
+      } else {
+        completed.delete(id);
+      }
+      const card = grid.querySelector(`[data-id="${id}"]`);
+      if (card) card.classList.toggle("complete", checkbox.checked);
+      updateProgress();
+      recordActivity();
+      renderDailyPlanner({ feedback: true, message: "Plan refreshed" });
+    });
+
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeFilter = button.dataset.filter;
+        filterButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        renderCards();
+      });
+    });
+
+    searchInput.addEventListener("input", renderCards);
+    dailyHoursInput.value = localStorage.getItem(plannerStorageKey) || "6";
+    hoursRange.value = dailyHoursInput.value;
+    dailyHoursInput.addEventListener("input", () => renderDailyPlanner({ feedback: true, message: "Plan updated" }));
+    hoursRange.addEventListener("input", () => setPlannerHours(hoursRange.value, "Plan updated"));
+    planButton.addEventListener("click", () => renderDailyPlanner({ feedback: true, message: "Plan updated" }));
+    hourPresets.forEach((button) => {
+      button.addEventListener("click", () => setPlannerHours(button.dataset.hours, "Preset selected"));
+    });
+    dailyPlan.addEventListener("input", (event) => {
+      const taskInput = event.target.closest(".plan-task-input");
+      if (!taskInput) return;
+      plannerTasks[taskInput.dataset.taskKey] = taskInput.value;
+      savePlannerTasks();
+    });
+    timerStart.addEventListener("click", startTimer);
+    timerPause.addEventListener("click", pauseTimer);
+    timerReset.addEventListener("click", resetTimer);
+    timerModeButtons.forEach((button) => {
+      button.addEventListener("click", () => setTimerMode(button.dataset.mode));
+    });
+    errorForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      errorLog.push({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        topic: errorTopic.value.trim(),
+        subject: errorSubject.value,
+        reason: errorReason.value.trim(),
+        date: todayKey()
+      });
+      localStorage.setItem(errorLogKey, JSON.stringify(errorLog));
+      errorForm.reset();
+      renderErrorLog();
+      recordActivity();
+    });
+    errorList.addEventListener("click", (event) => {
+      const deleteButton = event.target.closest("[data-error-id]");
+      if (!deleteButton) return;
+      errorLog = errorLog.filter((entry) => entry.id !== deleteButton.dataset.errorId);
+      localStorage.setItem(errorLogKey, JSON.stringify(errorLog));
+      renderErrorLog();
+    });
+    mockForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const physics = clampNumber(Number(mockPhysics.value), 0, 100);
+      const chemistry = clampNumber(Number(mockChemistry.value), 0, 100);
+      const math = clampNumber(Number(mockMath.value), 0, 100);
+      mockLog.push({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name: mockName.value.trim(),
+        date: mockDate.value || todayKey(),
+        physics,
+        chemistry,
+        math,
+        total: physics + chemistry + math
+      });
+      localStorage.setItem(mockLogKey, JSON.stringify(mockLog));
+      mockForm.reset();
+      mockDate.value = todayKey();
+      renderMockChart();
+      recordActivity();
+    });
+    randomRevisionButton.addEventListener("click", rollRevisionTopic);
+
+    function attachCardTilt() {
+      document.querySelectorAll(".syllabus-card").forEach((card) => {
+        card.addEventListener("pointermove", (event) => {
+          if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+          const rect = card.getBoundingClientRect();
+          const x = ((event.clientX - rect.left) / rect.width - 0.5) * 7;
+          const y = ((event.clientY - rect.top) / rect.height - 0.5) * -7;
+          card.style.transform = `perspective(900px) rotateX(${y}deg) rotateY(${x}deg) translateY(-2px)`;
+        });
+        card.addEventListener("pointerleave", () => {
+          card.style.transform = "";
+        });
+      });
+    }
+
+    function animateCounts() {
+      document.querySelectorAll(".count").forEach((counter) => {
+        const target = Number(counter.dataset.target);
+        let current = 0;
+        const step = Math.max(1, Math.ceil(target / 36));
+        const timer = setInterval(() => {
+          current += step;
+          if (current >= target) {
+            current = target;
+            clearInterval(timer);
+          }
+          counter.textContent = current;
+        }, 24);
+      });
+    }
+
+    function setupReveal() {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      document.querySelectorAll(".reveal").forEach((item) => observer.observe(item));
+    }
+
+    function setupPointerLight() {
+      window.addEventListener("pointermove", (event) => {
+        document.body.style.setProperty("--mx", `${event.clientX}px`);
+        document.body.style.setProperty("--my", `${event.clientY}px`);
+      }, { passive: true });
+    }
+
+    function setupCanvas() {
+      const canvas = document.querySelector("#motionCanvas");
+      const ctx = canvas.getContext("2d");
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduceMotion) return;
+
+      const colors = ["#24f8ff", "#ff3df2", "#b6ff3d", "#ffde59", "#7c4dff"];
+      let dots = [];
+      let width = 0;
+      let height = 0;
+
+      function resize() {
+        width = canvas.width = Math.floor(window.innerWidth * window.devicePixelRatio);
+        height = canvas.height = Math.floor(window.innerHeight * window.devicePixelRatio);
+        canvas.style.width = `${window.innerWidth}px`;
+        canvas.style.height = `${window.innerHeight}px`;
+        const count = Math.min(84, Math.max(38, Math.floor(window.innerWidth / 18)));
+        dots = Array.from({ length: count }, (_, index) => ({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.28 * window.devicePixelRatio,
+          vy: (Math.random() - 0.5) * 0.28 * window.devicePixelRatio,
+          r: (index % 4 === 0 ? 1.9 : 1.2) * window.devicePixelRatio,
+          color: colors[index % colors.length]
+        }));
+      }
+
+      function frame() {
+        ctx.clearRect(0, 0, width, height);
+        dots.forEach((dot) => {
+          dot.x += dot.vx;
+          dot.y += dot.vy;
+          if (dot.x < 0 || dot.x > width) dot.vx *= -1;
+          if (dot.y < 0 || dot.y > height) dot.vy *= -1;
+        });
+
+        for (let i = 0; i < dots.length; i += 1) {
+          for (let j = i + 1; j < dots.length; j += 1) {
+            const a = dots[i];
+            const b = dots[j];
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const limit = 135 * window.devicePixelRatio;
+            if (distance < limit) {
+              ctx.globalAlpha = 0.2 * (1 - distance / limit);
+              ctx.strokeStyle = a.color;
+              ctx.lineWidth = window.devicePixelRatio;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        dots.forEach((dot) => {
+          ctx.globalAlpha = 0.78;
+          ctx.fillStyle = dot.color;
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        ctx.globalAlpha = 1;
+        requestAnimationFrame(frame);
+      }
+
+      resize();
+      frame();
+      window.addEventListener("resize", resize);
+    }
+
+    todayFocus.textContent = focusIdeas[new Date().getDate() % focusIdeas.length];
+    mockDate.value = todayKey();
+    updateStreakDisplay();
+    renderErrorLog();
+    renderMockChart();
+    renderTimerSessions();
+    setupScratchpad();
+    renderCards();
+    renderDailyPlanner();
+    renderTimer();
+    animateCounts();
+    setupReveal();
+    setupPointerLight();
+    setupCanvas();
+  </script>
+</body>
+</html>
