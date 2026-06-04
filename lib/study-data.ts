@@ -93,12 +93,12 @@ export function seedState(): StudyState {
       "chem-mole": 70
     },
     errorLogs: [
-      { id: "seed-1", subject: "Physics", topic: "Units and Measurements", reason: "Skipped dimensional check in final step.", date: todayKey(), resolved: false },
-      { id: "seed-2", subject: "Chemistry", topic: "Mole Concept", reason: "Mixed molarity and normality in a hurry.", date: todayKey(), resolved: false }
+      { id: "9f98789b-7753-4dd6-b43c-6d8994e0a001", subject: "Physics", topic: "Units and Measurements", reason: "Skipped dimensional check in final step.", date: todayKey(), resolved: false },
+      { id: "9f98789b-7753-4dd6-b43c-6d8994e0a002", subject: "Chemistry", topic: "Mole Concept", reason: "Mixed molarity and normality in a hurry.", date: todayKey(), resolved: false }
     ],
     mockTests: [
-      { id: "seed-mock-1", name: "JEE Main Mock 15", date: "2026-05-12", physics: 76, chemistry: 58, math: 48 },
-      { id: "seed-mock-2", name: "Part Test 04", date: "2026-05-08", physics: 64, chemistry: 61, math: 44 }
+      { id: "9f98789b-7753-4dd6-b43c-6d8994e0b001", name: "JEE Main Mock 15", date: "2026-05-12", physics: 76, chemistry: 58, math: 48 },
+      { id: "9f98789b-7753-4dd6-b43c-6d8994e0b002", name: "Part Test 04", date: "2026-05-08", physics: 64, chemistry: 61, math: 44 }
     ],
     scratchpad: "# Quick scratchpad\ns = ut + 1/2 at^2\nv^2 = u^2 + 2as\n\nlog rules:\nlog(ab) = loga + logb",
     sessionsToday: 4,

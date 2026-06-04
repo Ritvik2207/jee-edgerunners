@@ -27,6 +27,13 @@ Without Supabase keys, the app runs in local demo mode. To enable real accounts 
 4. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 5. Enable email/password and Google sign-in in Supabase Auth.
 
+### Google Login Behavior
+
+- Google sign-in uses the name Supabase receives from the Google profile.
+- Email/password signup uses the "Name for email signup" field.
+- If a signed-in account has no name, the app shows a short profile setup box before opening the dashboard.
+- The profile name is saved in `profiles.display_name`, so the dashboard greeting and account area stay consistent across devices.
+
 ## GitHub Workflow
 
 This folder is connected to GitHub:

@@ -38,11 +38,11 @@ export function importLegacyProgress(current: StudyState): StudyState {
   const legacyTasks = safeRead<Record<string, string>>("edgerunners-planner-tasks", {});
   const legacyProgress = safeRead<string[]>("jee-nexus-progress-v1", []);
 
-  next.errorLogs = [...next.errorLogs, ...legacyErrors.map((entry) => ({ ...entry, id: `legacy-${entry.id || crypto.randomUUID()}` }))];
+  next.errorLogs = [...next.errorLogs, ...legacyErrors.map((entry) => ({ ...entry, id: crypto.randomUUID() }))];
   next.mockTests = [
     ...next.mockTests,
     ...legacyMocks.map((mock) => ({
-      id: `legacy-${mock.id || crypto.randomUUID()}`,
+      id: crypto.randomUUID(),
       name: mock.name || "Imported mock",
       date: mock.date || todayKey(),
       physics: Number(mock.physics || 0),

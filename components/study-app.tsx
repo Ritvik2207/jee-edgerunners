@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import {
   BarChart3,
   Bell,
@@ -60,6 +61,7 @@ type UserState = {
   email: string;
   name: string;
   demo: boolean;
+  profileComplete: boolean;
 };
 
 const navigation = [
@@ -77,14 +79,39 @@ const quotes = [
   "Consistency beats panic. Build the day, then execute it."
 ];
 
+const demoUser: UserState = { id: "demo-local", email: "demo@local", name: "Ritvik Kumar", demo: true, profileComplete: true };
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function authDisplayName(authUser: SupabaseAuthUser) {
+  const metadata = (authUser.user_metadata ?? {}) as Record<string, unknown>;
+  const candidates = [
+    metadata.display_name,
+    metadata.full_name,
+    metadata.name,
+    metadata.user_name
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+
+  return "";
+}
+
+function greetingName(user: UserState | null) {
+  return user?.name.trim().split(/\s+/)[0] || "Student";
+}
+
 export function StudyApp({ initialView }: StudyAppProps) {
   const [view] = useState<ViewKey>(initialView);
   const [state, setState] = useState<StudyState>(() => seedState());
-  const [user, setUser] = useState<UserState | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  const [user, setUser] = useState<UserState | null>(() => (isSupabaseConfigured() ? null : demoUser));
+  const [loadingUser, setLoadingUser] = useState(() => isSupabaseConfigured());
   const [syncStatus, setSyncStatus] = useState("Local demo ready");
   const [authMessage, setAuthMessage] = useState("");
   const [authForm, setAuthForm] = useState({ email: "", password: "", name: "" });
+  const [profileName, setProfileName] = useState("");
+  const [profileMessage, setProfileMessage] = useState("");
   const [errorForm, setErrorForm] = useState({ subject: "Physics" as Subject, topic: "", reason: "" });
   const [mockForm, setMockForm] = useState({ name: "", date: todayKey(), physics: 0, chemistry: 0, math: 0 });
   const [timerSeconds, setTimerSeconds] = useState(25 * 60);
@@ -104,7 +131,7 @@ export function StudyApp({ initialView }: StudyAppProps) {
       if (!supabase) {
         if (mounted) {
           setState(readLocalState());
-          setUser({ id: "demo-local", email: "demo@local", name: "Ritvik Kumar", demo: true });
+          setUser(demoUser);
           setLoadingUser(false);
           setSyncStatus("Demo mode: add Supabase keys for account sync");
         }
@@ -114,12 +141,7 @@ export function StudyApp({ initialView }: StudyAppProps) {
       const { data } = await supabase.auth.getSession();
       const sessionUser = data.session?.user;
       if (sessionUser && mounted) {
-        const userState = {
-          id: sessionUser.id,
-          email: sessionUser.email || "student",
-          name: sessionUser.user_metadata?.display_name || sessionUser.email?.split("@")[0] || "Student",
-          demo: false
-        };
+        const userState = await resolveUserState(sessionUser);
         setUser(userState);
         await loadRemoteState(userState.id);
       }
@@ -130,12 +152,7 @@ export function StudyApp({ initialView }: StudyAppProps) {
           setLoadingUser(false);
           return;
         }
-        const userState = {
-          id: session.user.id,
-          email: session.user.email || "student",
-          name: session.user.user_metadata?.display_name || session.user.email?.split("@")[0] || "Student",
-          demo: false
-        };
+        const userState = await resolveUserState(session.user);
         setUser(userState);
         await loadRemoteState(userState.id);
       });
@@ -167,6 +184,47 @@ export function StudyApp({ initialView }: StudyAppProps) {
 
     return () => window.clearInterval(timer);
   }, [timerRunning, state]);
+
+  async function resolveUserState(authUser: SupabaseAuthUser): Promise<UserState> {
+    const metadataName = authDisplayName(authUser);
+    let displayName = metadataName;
+    let profileComplete = Boolean(metadataName);
+
+    if (supabase) {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("display_name, onboarding_complete")
+          .eq("id", authUser.id)
+          .maybeSingle();
+
+        const savedName = typeof profile?.display_name === "string" ? profile.display_name.trim() : "";
+        displayName = savedName || metadataName;
+        profileComplete = Boolean(displayName);
+
+        await supabase.from("profiles").upsert(
+          {
+            id: authUser.id,
+            display_name: displayName || null,
+            onboarding_complete: Boolean(displayName),
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: "id" }
+        );
+      } catch {
+        setSyncStatus("Profile table not ready; using auth account data");
+      }
+    }
+
+    setProfileName(displayName);
+    return {
+      id: authUser.id,
+      email: authUser.email || "student",
+      name: displayName,
+      demo: false,
+      profileComplete
+    };
+  }
 
   async function loadRemoteState(userId: string) {
     if (!supabase) return;
@@ -229,6 +287,28 @@ export function StudyApp({ initialView }: StudyAppProps) {
         block_key: blockKey,
         task_text: taskText
       }));
+      const errorRows = next.errorLogs
+        .filter((entry) => uuidPattern.test(entry.id))
+        .map((entry) => ({
+          id: entry.id,
+          user_id: user.id,
+          subject: entry.subject,
+          topic: entry.topic,
+          reason: entry.reason,
+          logged_on: entry.date,
+          resolved: entry.resolved
+        }));
+      const mockRows = next.mockTests
+        .filter((mock) => uuidPattern.test(mock.id))
+        .map((mock) => ({
+          id: mock.id,
+          user_id: user.id,
+          name: mock.name,
+          taken_on: mock.date,
+          physics: mock.physics,
+          chemistry: mock.chemistry,
+          math: mock.math
+        }));
 
       await Promise.all([
         supabase.from("planner_days").upsert(
@@ -237,6 +317,8 @@ export function StudyApp({ initialView }: StudyAppProps) {
         ),
         progressRows.length ? supabase.from("syllabus_progress").upsert(progressRows, { onConflict: "user_id,topic_id" }) : Promise.resolve(),
         taskRows.length ? supabase.from("planner_tasks").upsert(taskRows, { onConflict: "user_id,plan_date,block_key" }) : Promise.resolve(),
+        errorRows.length ? supabase.from("error_logs").upsert(errorRows, { onConflict: "id" }) : Promise.resolve(),
+        mockRows.length ? supabase.from("mock_tests").upsert(mockRows, { onConflict: "id" }) : Promise.resolve(),
         supabase.from("scratchpad_notes").upsert({ user_id: user.id, body: next.scratchpad }, { onConflict: "user_id" })
       ]);
       setSyncStatus("Saved online");
@@ -277,7 +359,7 @@ export function StudyApp({ initialView }: StudyAppProps) {
     const { error } = await supabase.auth.signUp({
       email: authForm.email,
       password: authForm.password,
-      options: { data: { display_name: authForm.name || "Student" } }
+      options: { data: { display_name: authForm.name.trim(), full_name: authForm.name.trim() } }
     });
     setAuthMessage(error ? error.message : "Account created. Check email if confirmation is enabled.");
   }
@@ -293,9 +375,44 @@ export function StudyApp({ initialView }: StudyAppProps) {
     });
   }
 
+  async function saveProfileName() {
+    const nextName = profileName.trim();
+    if (!nextName) {
+      setProfileMessage("Enter your name to continue.");
+      return;
+    }
+    if (!supabase || !user || user.demo) return;
+
+    try {
+      const [{ error: profileError }, { error: authError }] = await Promise.all([
+        supabase.from("profiles").upsert(
+          {
+            id: user.id,
+            display_name: nextName,
+            onboarding_complete: true,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: "id" }
+        ),
+        supabase.auth.updateUser({ data: { display_name: nextName, full_name: nextName } })
+      ]);
+
+      if (profileError || authError) {
+        setProfileMessage(profileError?.message || authError?.message || "Could not save profile name.");
+        return;
+      }
+
+      setUser({ ...user, name: nextName, profileComplete: true });
+      setSyncStatus("Profile saved online");
+      setProfileMessage("");
+    } catch {
+      setProfileMessage("Could not save profile name. Check Supabase setup.");
+    }
+  }
+
   async function signOut() {
     if (supabase && !user?.demo) await supabase.auth.signOut();
-    setUser(supabase ? null : { id: "demo-local", email: "demo@local", name: "Ritvik Kumar", demo: true });
+    setUser(supabase ? null : demoUser);
   }
 
   if (loadingUser) {
@@ -315,16 +432,28 @@ export function StudyApp({ initialView }: StudyAppProps) {
     );
   }
 
+  if (user && !user.demo && !user.profileComplete) {
+    return (
+      <ProfileSetupScreen
+        user={user}
+        profileName={profileName}
+        profileMessage={profileMessage}
+        setProfileName={setProfileName}
+        saveProfileName={saveProfileName}
+        signOut={signOut}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[270px_1fr]">
       <Sidebar activeView={view} />
 
-      <main className="min-w-0">
+      <main className="min-w-0 pb-24 lg:pb-0">
         <Topbar user={user} state={state} syncStatus={syncStatus} signOut={signOut} />
 
-        <div className="mx-auto max-w-[1530px] px-4 py-5 sm:px-6 lg:px-8">
-          <Header state={state} />
-          <MetricStrip state={state} accuracy={accuracy} />
+        <div className="mx-auto max-w-[1530px] px-4 py-8 sm:px-6 lg:px-10">
+          <Header state={state} user={user} />
 
           {(view === "dashboard" || view === "planner") && (
             <DashboardGrid
@@ -367,6 +496,7 @@ export function StudyApp({ initialView }: StudyAppProps) {
           )}
         </div>
       </main>
+      <MobileNav activeView={view} />
     </div>
   );
 }
@@ -391,19 +521,66 @@ function AuthScreen({
       <section className="edge-panel w-full max-w-md rounded-xl p-6">
         <p className="text-xs font-black uppercase tracking-[0.2em] text-edge-lime">Account sync</p>
         <h1 className="mt-2 text-3xl font-black">Sign in to JEE Edgerunners</h1>
-        <p className="mt-3 text-sm leading-6 text-edge-muted">Progress saves to your profile after Supabase is connected.</p>
+        <p className="mt-3 text-sm leading-6 text-edge-muted">Progress saves online after Supabase is connected. Google sign-in uses your Google profile name when available.</p>
         <div className="mt-6 grid gap-3">
-          <input className="input-shell px-3" placeholder="Name for signup" value={authForm.name} onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })} />
+          <input className="input-shell px-3" placeholder="Name for email signup" value={authForm.name} onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })} />
           <input className="input-shell px-3" type="email" placeholder="Email" value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} />
           <input className="input-shell px-3" type="password" placeholder="Password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} />
           <div className="grid grid-cols-2 gap-2">
             <button className="edge-button px-4" type="button" onClick={signIn}>Sign in</button>
             <button className="ghost-button px-4" type="button" onClick={signUp}>Create</button>
           </div>
-          <button className="ghost-button px-4" type="button" onClick={signInWithGoogle}>Sign in with Google</button>
+          <button className="ghost-button px-4" type="button" onClick={signInWithGoogle}>Continue with Google</button>
           {authMessage && <p className="rounded-lg border border-edge-line bg-white/[0.04] p-3 text-sm text-edge-muted">{authMessage}</p>}
         </div>
       </section>
+    </main>
+  );
+}
+
+function ProfileSetupScreen({
+  user,
+  profileName,
+  profileMessage,
+  setProfileName,
+  saveProfileName,
+  signOut
+}: {
+  user: UserState;
+  profileName: string;
+  profileMessage: string;
+  setProfileName: (name: string) => void;
+  saveProfileName: () => void;
+  signOut: () => void;
+}) {
+  return (
+    <main className="grid min-h-screen place-items-center px-4 py-8">
+      <form
+        className="edge-panel w-full max-w-md rounded-xl p-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void saveProfileName();
+        }}
+      >
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-edge-lime">Profile setup</p>
+        <h1 className="mt-2 text-3xl font-black">What should we call you?</h1>
+        <p className="mt-3 text-sm leading-6 text-edge-muted">
+          This name appears on your dashboard and is saved with your online progress.
+        </p>
+        <div className="mt-6 grid gap-3">
+          <input
+            autoFocus
+            className="input-shell px-3"
+            placeholder="Your name"
+            value={profileName}
+            onChange={(event) => setProfileName(event.target.value)}
+          />
+          <button className="edge-button px-4" type="submit">Save name and open dashboard</button>
+          <button className="ghost-button px-4" type="button" onClick={signOut}>Use another account</button>
+          <p className="text-xs text-edge-muted">Signed in as {user.email}</p>
+          {profileMessage && <p className="rounded-lg border border-edge-line bg-white/[0.04] p-3 text-sm text-edge-muted">{profileMessage}</p>}
+        </div>
+      </form>
     </main>
   );
 }
@@ -458,6 +635,31 @@ function Sidebar({ activeView }: { activeView: ViewKey }) {
   );
 }
 
+function MobileNav({ activeView }: { activeView: ViewKey }) {
+  const mobileItems = navigation.filter((item) => ["dashboard", "planner", "syllabus", "error-book", "mocks"].includes(item.key));
+
+  return (
+    <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-xl border border-edge-line bg-[#04101c]/95 p-2 shadow-edge backdrop-blur-xl lg:hidden" aria-label="Mobile navigation">
+      {mobileItems.map((item) => {
+        const Icon = item.icon;
+        const active = item.key === activeView;
+        return (
+          <Link
+            key={item.key}
+            className={`grid min-h-12 place-items-center gap-1 rounded-lg text-[0.66rem] font-bold ${
+              active ? "bg-edge-cyan/14 text-edge-cyan" : "text-edge-muted"
+            }`}
+            href={item.href}
+          >
+            <Icon size={18} />
+            <span>{item.key === "error-book" ? "Errors" : item.label.split(" ")[0]}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 function Topbar({ user, state, syncStatus, signOut }: { user: UserState | null; state: StudyState; syncStatus: string; signOut: () => void }) {
   return (
     <header className="sticky top-0 z-20 border-b border-edge-line bg-[#040c14]/88 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
@@ -485,14 +687,14 @@ function Topbar({ user, state, syncStatus, signOut }: { user: UserState | null; 
   );
 }
 
-function Header({ state }: { state: StudyState }) {
+function Header({ state, user }: { state: StudyState; user: UserState | null }) {
   return (
-    <div className="mb-4 flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
+    <div className="mb-8 flex flex-col justify-between gap-6 xl:flex-row xl:items-end">
       <div>
-        <h1 className="text-3xl font-black tracking-tight">Good evening, Ritvik! <span className="inline-block">👊</span></h1>
+        <h1 className="text-3xl font-black tracking-tight">Good evening, {greetingName(user)}! <span className="inline-block">👊</span></h1>
         <p className="mt-2 text-edge-muted">Consistency &gt; Motivation. Keep the edge.</p>
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:min-w-[650px] xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:min-w-[720px] xl:grid-cols-4">
         <StatCard label="Study Hours Today" value={formatHours(state.hoursToday)} detail="/ 8h goal" progress={(state.hoursToday / 8) * 100} />
         <StatCard label="Sessions" value={String(state.sessionsToday)} detail="+1 from yesterday" />
         <StatCard label="Accuracy (Practice)" value={`${practiceAccuracy(state)}%`} detail="+6% from yesterday" />
@@ -517,7 +719,7 @@ function StatCard({ label, value, detail, progress }: { label: string; value: st
 
 function MetricStrip({ state, accuracy }: { state: StudyState; accuracy: number }) {
   return (
-    <div className="edge-panel mb-4 grid gap-3 rounded-xl p-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="edge-panel mb-4 hidden gap-3 rounded-xl p-4 sm:grid sm:grid-cols-2 xl:grid-cols-5">
       <MiniMetric icon={Clock3} label="Study Time" value={formatHours(state.hoursToday)} />
       <MiniMetric icon={Target} label="Sessions" value={String(state.sessionsToday)} />
       <MiniMetric icon={ClipboardList} label="Questions" value={String(state.questionsSolved)} />
@@ -551,7 +753,7 @@ function DashboardGrid({
   commitState: (state: StudyState) => void;
 }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.1fr_0.62fr_0.62fr]">
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
       <PlannerPanel state={state} plan={plan} commitState={commitState} />
       <ProgressSummary state={state} />
       <ErrorSummary state={state} />
