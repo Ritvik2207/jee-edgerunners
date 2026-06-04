@@ -4,10 +4,10 @@ This repository contains the JEE Edgerunners website for a drop-year PCM student
 
 ## Project Shape
 
-- The website is currently a single-file app in `index.html`.
-- HTML, CSS, and JavaScript all live in that file.
-- There is no backend, login system, build step, or package manager yet.
-- User data is saved in the browser with `localStorage`.
+- The app is now a Next.js browser web app.
+- The old static dashboard is preserved at `legacy/index.html`.
+- Supabase is the planned account/database layer.
+- Without Supabase keys, the app runs in local demo mode.
 
 ## Current Product Goal
 
@@ -24,8 +24,8 @@ Priority workflows:
 
 ## Editing Rules
 
-- Keep the app working by opening `index.html` directly in a browser.
-- Do not add frameworks unless the user asks for a bigger rebuild.
+- Keep the app working with `npm run dev` and `npm run build`.
+- Do not remove `legacy/index.html` unless the user explicitly asks.
 - Keep changes beginner-readable because the owner is learning while building.
 - Do not commit API keys, `.env` files, credentials, private notes, or copied paid study material.
 - Avoid deleting existing features while adding new ones.

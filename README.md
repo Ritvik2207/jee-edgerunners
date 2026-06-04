@@ -1,12 +1,31 @@
 # JEE Edgerunner
 
-This project is a JEE Main study dashboard. The current website is a single file:
+This project is a JEE Main study web app. It is being rebuilt from a single-file dashboard into a Next.js + Supabase browser app.
 
-- `index.html` - the full page, styling, syllabus cards, progress tracker, and browser storage.
+- `app/` - Next.js routes.
+- `components/` - dashboard and app UI.
+- `lib/` - study data, planner logic, storage, and Supabase client.
+- `supabase/schema.sql` - database tables and row-level security.
+- `legacy/index.html` - preserved old single-file dashboard.
 
 ## How to Open It
 
-Double-click `index.html` to open it in your browser.
+Install dependencies and run the local app:
+
+```bash
+npm install
+npm run dev
+```
+
+Then open `http://localhost:3000`.
+
+Without Supabase keys, the app runs in local demo mode. To enable real accounts and cross-device saving:
+
+1. Create a Supabase project.
+2. Run `supabase/schema.sql` in the Supabase SQL editor.
+3. Copy `.env.example` to `.env.local`.
+4. Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+5. Enable email/password and Google sign-in in Supabase Auth.
 
 ## GitHub Workflow
 

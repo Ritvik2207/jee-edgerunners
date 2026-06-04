@@ -4,19 +4,22 @@ This is the same guidance as `AGENTS.md`, written for Claude or any GitHub-conne
 
 ## What This Is
 
-JEE Edgerunners is a single-file JEE Main study dashboard:
+JEE Edgerunners is a Next.js JEE Main study dashboard:
 
-- Main file: `index.html`
+- Main routes: `app/`
+- Main UI: `components/study-app.tsx`
+- Data/schema: `lib/`, `supabase/schema.sql`
+- Legacy static file: `legacy/index.html`
 - Supporting docs: `README.md`, `PROJECT_PLAN.md`
-- No install command is needed.
-- Open `index.html` directly in a browser to test.
+- Install with `npm install`.
+- Run locally with `npm run dev`.
 
 ## How To Work On It
 
 When making changes:
 
 1. Read `README.md` and `AGENTS.md`.
-2. Edit `index.html` unless the user explicitly asks for a bigger project structure.
+2. Edit the Next.js app unless the user explicitly asks to change the legacy static file.
 3. Keep code simple and explain changes in beginner-friendly language.
 4. Commit changes to GitHub so the user does not need to copy and paste code.
 
