@@ -8,6 +8,22 @@ This project is a JEE Main study dashboard. The current website is a single file
 
 Double-click `index.html` to open it in your browser.
 
+## GitHub Workflow
+
+This folder is connected to GitHub:
+
+`https://github.com/Ritvik2207/jee-edgerunners`
+
+Use GitHub as the main saved copy of the project. After changes are made, commit and push them so Codex, Claude, Gemini, Copilot, or another coding tool can read the latest project from GitHub.
+
+You should not need to copy and paste the full website code into chats. Give the AI tool the GitHub repository link and ask it to inspect the project.
+
+Helpful files for AI tools:
+
+- `AGENTS.md` - instructions for Codex and coding agents.
+- `CLAUDE.md` - instructions for Claude.
+- `.github/copilot-instructions.md` - instructions for GitHub Copilot.
+
 ## What You Are Building
 
 The first useful version should help a drop-year PCM student answer three daily questions:

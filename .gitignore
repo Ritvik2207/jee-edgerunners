@@ -1,0 +1,22 @@
+# Secrets and environment files
+.env
+.env.*
+*.pem
+*.key
+openai-api-key.txt
+
+# Dependencies and build outputs
+node_modules/
+dist/
+build/
+
+# Logs and temp files
+*.log
+tmp/
+temp/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
