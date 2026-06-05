@@ -15,10 +15,10 @@ Make the site genuinely useful for JEE Main drop-year students before adding pai
 
 Priority workflows:
 
-1. Build a daily Physics, Chemistry, Mathematics, and revision plan.
-2. Track completed syllabus units.
-3. Log mistakes in an error book.
-4. Track mock test scores.
+1. Build a smart daily Physics, Chemistry, Mathematics, and revision plan from mistakes, mocks, and syllabus gaps.
+2. Track completed syllabus units with confidence and revision dates.
+3. Log mistakes with type, weak chapter, repeat count, repair task, and resolved state.
+4. Track mock test scores, accuracy, and weak chapters.
 5. Support focused Pomodoro study sessions.
 6. Keep mobile layout usable.
 
@@ -34,8 +34,8 @@ Priority workflows:
 
 Before finishing code changes:
 
-1. Check JavaScript syntax.
-2. Open `index.html` in a browser.
+1. Run `npm run typecheck` or the direct TypeScript checker.
+2. Run `npm run build`.
 3. Test the specific feature changed.
 4. Check a narrow mobile width.
 

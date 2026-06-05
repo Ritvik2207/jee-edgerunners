@@ -36,7 +36,7 @@ export default function HomePage() {
             {[
               ["Accounts", "Email/password and Google sign-in through Supabase.", ShieldCheck],
               ["Online data", "Progress, planner, mocks, mistakes, and notes are database-ready.", Database],
-              ["AI later", "Clean placeholder hooks for study-plan AI and doubt solving.", Sparkles]
+              ["Useful first", "Monetization and AI stay behind the core planner, revision, mocks, and repair workflow.", Sparkles]
             ].map(([title, text, Icon]) => (
               <div key={title as string} className="rounded-lg border border-edge-line bg-white/[0.035] p-4">
                 <div className="mb-2 flex items-center gap-3">

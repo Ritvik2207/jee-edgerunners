@@ -36,15 +36,23 @@ import { buildDailyPlan, formatMinutes } from "@/lib/planner";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import {
   formatHours,
+  buildRevisionItems,
+  mistakeTypes,
   practiceAccuracy,
+  revisionTaskKey,
   seedState,
+  subjectAccuracy,
   subjectMeta,
   subjectProgress,
+  subjectScore,
+  subjectWeakChapter,
   subjects,
   syllabusTopics,
   todayKey,
   totalMockScore,
+  weakestMockSubject,
   type ErrorLog,
+  type MistakeType,
   type MockTest,
   type StudyState,
   type Subject,
@@ -112,8 +120,28 @@ export function StudyApp({ initialView }: StudyAppProps) {
   const [authForm, setAuthForm] = useState({ email: "", password: "", name: "" });
   const [profileName, setProfileName] = useState("");
   const [profileMessage, setProfileMessage] = useState("");
-  const [errorForm, setErrorForm] = useState({ subject: "Physics" as Subject, topic: "", reason: "" });
-  const [mockForm, setMockForm] = useState({ name: "", date: todayKey(), physics: 0, chemistry: 0, math: 0 });
+  const [errorForm, setErrorForm] = useState({
+    subject: "Physics" as Subject,
+    topic: "",
+    weakChapter: "",
+    mistakeType: "Conceptual" as MistakeType,
+    repeatCount: 1,
+    repairTask: "",
+    reason: ""
+  });
+  const [mockForm, setMockForm] = useState({
+    name: "",
+    date: todayKey(),
+    physics: 0,
+    chemistry: 0,
+    math: 0,
+    physicsAccuracy: 70,
+    chemistryAccuracy: 70,
+    mathAccuracy: 70,
+    physicsWeakChapter: "",
+    chemistryWeakChapter: "",
+    mathWeakChapter: ""
+  });
   const [timerSeconds, setTimerSeconds] = useState(25 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
 
@@ -230,11 +258,11 @@ export function StudyApp({ initialView }: StudyAppProps) {
     if (!supabase) return;
     try {
       const [progress, planner, tasks, errors, mocks, scratchpad, sessions] = await Promise.all([
-        supabase.from("syllabus_progress").select("topic_id, completed, confidence").eq("user_id", userId),
+        supabase.from("syllabus_progress").select("topic_id, completed, confidence, completed_at, revision_done").eq("user_id", userId),
         supabase.from("planner_days").select("hours").eq("user_id", userId).eq("plan_date", todayKey()).maybeSingle(),
         supabase.from("planner_tasks").select("block_key, task_text").eq("user_id", userId).eq("plan_date", todayKey()),
-        supabase.from("error_logs").select("id, subject, topic, reason, logged_on, resolved").eq("user_id", userId).order("logged_on", { ascending: true }),
-        supabase.from("mock_tests").select("id, name, taken_on, physics, chemistry, math").eq("user_id", userId).order("taken_on", { ascending: true }),
+        supabase.from("error_logs").select("id, subject, topic, reason, mistake_type, weak_chapter, repeat_count, repair_task, logged_on, resolved").eq("user_id", userId).order("logged_on", { ascending: true }),
+        supabase.from("mock_tests").select("id, name, taken_on, physics, chemistry, math, physics_accuracy, chemistry_accuracy, math_accuracy, physics_weak_chapter, chemistry_weak_chapter, math_weak_chapter").eq("user_id", userId).order("taken_on", { ascending: true }),
         supabase.from("scratchpad_notes").select("body").eq("user_id", userId).maybeSingle(),
         supabase.from("pomodoro_sessions").select("id").eq("user_id", userId).gte("completed_at", `${todayKey()}T00:00:00`)
       ]);
@@ -242,6 +270,11 @@ export function StudyApp({ initialView }: StudyAppProps) {
       const next = readLocalState();
       next.completedTopics = Object.fromEntries((progress.data || []).map((row) => [row.topic_id, row.completed]));
       next.confidence = Object.fromEntries((progress.data || []).map((row) => [row.topic_id, row.confidence || 50]));
+      next.completedAt = Object.fromEntries((progress.data || []).filter((row) => row.completed_at).map((row) => [row.topic_id, row.completed_at]));
+      next.revisionDone = Object.assign({}, ...((progress.data || []).map((row) => {
+        const done = (row.revision_done || {}) as Record<string, boolean>;
+        return Object.fromEntries(Object.entries(done).map(([stage, completed]) => [revisionTaskKey(row.topic_id, stage as "1-day" | "7-day" | "21-day"), completed]));
+      })));
       next.hoursToday = Number(planner.data?.hours || next.hoursToday);
       next.plannerTasks = Object.fromEntries((tasks.data || []).map((row) => [row.block_key, row.task_text || ""]));
       next.errorLogs = (errors.data || []).map((row) => ({
@@ -249,6 +282,10 @@ export function StudyApp({ initialView }: StudyAppProps) {
         subject: row.subject as Subject,
         topic: row.topic,
         reason: row.reason,
+        mistakeType: (row.mistake_type || "Conceptual") as MistakeType,
+        weakChapter: row.weak_chapter || row.topic,
+        repeatCount: Number(row.repeat_count || 1),
+        repairTask: row.repair_task || `Repair ${row.topic} with three examples and one note.`,
         date: row.logged_on,
         resolved: row.resolved
       }));
@@ -258,7 +295,13 @@ export function StudyApp({ initialView }: StudyAppProps) {
         date: row.taken_on,
         physics: row.physics,
         chemistry: row.chemistry,
-        math: row.math
+        math: row.math,
+        physicsAccuracy: row.physics_accuracy || 70,
+        chemistryAccuracy: row.chemistry_accuracy || 70,
+        mathAccuracy: row.math_accuracy || 70,
+        physicsWeakChapter: row.physics_weak_chapter || "",
+        chemistryWeakChapter: row.chemistry_weak_chapter || "",
+        mathWeakChapter: row.math_weak_chapter || ""
       }));
       next.scratchpad = scratchpad.data?.body || next.scratchpad;
       next.sessionsToday = sessions.data?.length || 0;
@@ -279,7 +322,13 @@ export function StudyApp({ initialView }: StudyAppProps) {
         user_id: user.id,
         topic_id: topicId,
         completed,
-        confidence: next.confidence[topicId] || 50
+        confidence: next.confidence[topicId] || 50,
+        completed_at: next.completedAt[topicId] || null,
+        revision_done: {
+          "1-day": Boolean(next.revisionDone[revisionTaskKey(topicId, "1-day")]),
+          "7-day": Boolean(next.revisionDone[revisionTaskKey(topicId, "7-day")]),
+          "21-day": Boolean(next.revisionDone[revisionTaskKey(topicId, "21-day")])
+        }
       }));
       const taskRows = Object.entries(next.plannerTasks).map(([blockKey, taskText]) => ({
         user_id: user.id,
@@ -295,6 +344,10 @@ export function StudyApp({ initialView }: StudyAppProps) {
           subject: entry.subject,
           topic: entry.topic,
           reason: entry.reason,
+          mistake_type: entry.mistakeType,
+          weak_chapter: entry.weakChapter,
+          repeat_count: entry.repeatCount,
+          repair_task: entry.repairTask,
           logged_on: entry.date,
           resolved: entry.resolved
         }));
@@ -307,7 +360,13 @@ export function StudyApp({ initialView }: StudyAppProps) {
           taken_on: mock.date,
           physics: mock.physics,
           chemistry: mock.chemistry,
-          math: mock.math
+          math: mock.math,
+          physics_accuracy: mock.physicsAccuracy,
+          chemistry_accuracy: mock.chemistryAccuracy,
+          math_accuracy: mock.mathAccuracy,
+          physics_weak_chapter: mock.physicsWeakChapter,
+          chemistry_weak_chapter: mock.chemistryWeakChapter,
+          math_weak_chapter: mock.mathWeakChapter
         }));
 
       await Promise.all([
@@ -627,9 +686,8 @@ function Sidebar({ activeView }: { activeView: ViewKey }) {
       </nav>
 
       <div className="edge-panel mt-8 rounded-xl p-4">
-        <p className="font-black text-edge-lime">Pro Edgerunner</p>
-        <p className="mt-2 text-sm leading-5 text-edge-muted">Premium analytics and mentor features can plug in later.</p>
-        <button className="edge-button mt-4 w-full" type="button">Upgrade later</button>
+        <p className="font-black text-edge-lime">Free Tool Focus</p>
+        <p className="mt-2 text-sm leading-5 text-edge-muted">Build trust first: planner, revision, mocks, and mistake repair before any paid feature.</p>
       </div>
     </aside>
   );
@@ -667,7 +725,7 @@ function Topbar({ user, state, syncStatus, signOut }: { user: UserState | null; 
         <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-edge-line bg-[#071523] px-3">
           <Search size={17} className="text-edge-muted" />
           <input className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-edge-muted" placeholder="Search topics, tests, notes..." />
-          <kbd className="hidden rounded border border-edge-line px-2 py-1 text-xs text-edge-muted sm:inline">⌘K</kbd>
+          <kbd className="hidden rounded border border-edge-line px-2 py-1 text-xs text-edge-muted sm:inline">Ctrl K</kbd>
         </div>
         <div className="hidden items-center gap-5 text-sm md:flex">
           <div className="flex items-center gap-2"><Flame className="text-orange-400" size={20} /><span className="text-edge-muted">Streak</span><strong>{state.streakDays} days</strong></div>
@@ -688,16 +746,18 @@ function Topbar({ user, state, syncStatus, signOut }: { user: UserState | null; 
 }
 
 function Header({ state, user }: { state: StudyState; user: UserState | null }) {
+  const weak = weakestMockSubject(state);
+
   return (
     <div className="mb-8 flex flex-col justify-between gap-6 xl:flex-row xl:items-end">
       <div>
-        <h1 className="text-3xl font-black tracking-tight">Good evening, {greetingName(user)}! <span className="inline-block">👊</span></h1>
+        <h1 className="text-3xl font-black tracking-tight">Good evening, {greetingName(user)}!</h1>
         <p className="mt-2 text-edge-muted">Consistency &gt; Motivation. Keep the edge.</p>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:min-w-[720px] xl:grid-cols-4">
         <StatCard label="Study Hours Today" value={formatHours(state.hoursToday)} detail="/ 8h goal" progress={(state.hoursToday / 8) * 100} />
         <StatCard label="Sessions" value={String(state.sessionsToday)} detail="+1 from yesterday" />
-        <StatCard label="Accuracy (Practice)" value={`${practiceAccuracy(state)}%`} detail="+6% from yesterday" />
+        <StatCard label="Accuracy (Practice)" value={`${practiceAccuracy(state)}%`} detail={weak ? `Weakest ${weak.subject}` : "No mock yet"} />
         <StatCard label="Questions Solved" value={String(state.questionsSolved)} detail="+28 from yesterday" />
       </div>
     </div>
@@ -760,7 +820,7 @@ function DashboardGrid({
       <MockSummary latestMock={latestMock} />
       <TimerPanel timerSeconds={timerSeconds} timerRunning={timerRunning} setTimerRunning={setTimerRunning} setTimerSeconds={setTimerSeconds} />
       <ScratchpadPanel state={state} commitState={commitState} />
-      <UpcomingPanel />
+      <UpcomingPanel state={state} commitState={commitState} />
     </div>
   );
 }
@@ -771,7 +831,7 @@ function PlannerPanel({ state, plan, commitState }: { state: StudyState; plan: R
   return (
     <section className="edge-panel rounded-xl p-5">
       <div className="mb-4 flex items-center justify-between">
-        <div><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Daily PCM Planner</p><h2 className="mt-1 text-xl font-black">Balanced PCM day</h2></div>
+        <div><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Daily PCM Planner</p><h2 className="mt-1 text-xl font-black">Smart repair day</h2></div>
         <Link className="ghost-button px-3 text-sm" href="/planner">View full plan</Link>
       </div>
       <div className="space-y-2 rounded-lg border border-edge-line bg-black/15 p-3">
@@ -781,11 +841,16 @@ function PlannerPanel({ state, plan, commitState }: { state: StudyState; plan: R
               {state.plannerTasks[block.key] ? <Check size={14} /> : null}
             </span>
             <span className="text-xs font-black uppercase tracking-[0.12em]" style={{ color: block.color }}>{block.label}</span>
-            <input
-              className="col-span-2 min-w-0 bg-transparent text-sm text-edge-muted outline-none focus:text-edge-text sm:col-span-1"
-              value={state.plannerTasks[block.key] || ""}
-              onChange={(event) => commitState({ ...state, plannerTasks: { ...state.plannerTasks, [block.key]: event.target.value } })}
-            />
+            <div className="col-span-2 min-w-0 sm:col-span-1">
+              <strong className="block text-sm">{block.detail}</strong>
+              <p className="mt-1 text-xs leading-5 text-edge-muted">{block.reason}</p>
+              <input
+                className="mt-2 w-full min-w-0 bg-transparent text-xs text-edge-muted outline-none focus:text-edge-text"
+                placeholder={block.action}
+                value={state.plannerTasks[block.key] || ""}
+                onChange={(event) => commitState({ ...state, plannerTasks: { ...state.plannerTasks, [block.key]: event.target.value } })}
+              />
+            </div>
             <span className="justify-self-start rounded-full border border-edge-line px-3 py-1 text-xs font-bold sm:justify-self-auto">{formatMinutes(block.minutes)}</span>
           </div>
         ))}
@@ -837,10 +902,12 @@ function ProgressSummary({ state }: { state: StudyState }) {
 }
 
 function ErrorSummary({ state }: { state: StudyState }) {
-  const total = state.errorLogs.length;
-  const conceptual = Math.max(1, Math.ceil(total * 0.35));
-  const silly = Math.max(1, Math.ceil(total * 0.27));
-  const calculation = Math.max(1, Math.ceil(total * 0.23));
+  const openErrors = state.errorLogs.filter((entry) => !entry.resolved);
+  const total = openErrors.length;
+  const conceptual = openErrors.filter((entry) => entry.mistakeType === "Conceptual").length;
+  const silly = openErrors.filter((entry) => entry.mistakeType === "Silly Mistake").length;
+  const calculation = openErrors.filter((entry) => entry.mistakeType === "Calculation").length;
+  const repeatLoad = openErrors.reduce((sum, entry) => sum + entry.repeatCount, 0);
 
   return (
     <section className="edge-panel rounded-xl p-5">
@@ -853,7 +920,7 @@ function ErrorSummary({ state }: { state: StudyState }) {
           <div className="relative grid h-36 w-36 place-items-center rounded-full" style={{ background: "conic-gradient(#ff4f7b 0 35%, #fbbf24 35% 62%, #22d3ee 62% 85%, #728199 85% 100%)" }}>
             <div className="grid h-24 w-24 place-items-center rounded-full bg-[#071523] text-center">
               <strong className="text-3xl">{total}</strong>
-              <span className="-mt-7 text-xs text-edge-muted">Total Errors</span>
+              <span className="-mt-7 text-xs text-edge-muted">Open Errors</span>
             </div>
           </div>
         </div>
@@ -861,7 +928,7 @@ function ErrorSummary({ state }: { state: StudyState }) {
           <Legend color="#ff4f7b" label="Conceptual" value={conceptual} />
           <Legend color="#fbbf24" label="Silly Mistake" value={silly} />
           <Legend color="#22d3ee" label="Calculation" value={calculation} />
-          <Legend color="#728199" label="Others" value={Math.max(0, total - conceptual - silly - calculation)} />
+          <Legend color="#728199" label="Repeat Load" value={repeatLoad} />
           <Link className="ghost-button mt-2 w-full px-3 text-sm" href="/error-book">Open Error Book</Link>
         </div>
       </div>
@@ -881,12 +948,14 @@ function ErrorBookPanel({
   expanded
 }: {
   state: StudyState;
-  errorForm: { subject: Subject; topic: string; reason: string };
-  setErrorForm: (form: { subject: Subject; topic: string; reason: string }) => void;
+  errorForm: { subject: Subject; topic: string; weakChapter: string; mistakeType: MistakeType; repeatCount: number; repairTask: string; reason: string };
+  setErrorForm: (form: { subject: Subject; topic: string; weakChapter: string; mistakeType: MistakeType; repeatCount: number; repairTask: string; reason: string }) => void;
   commitState: (state: StudyState) => void;
   expanded: boolean;
 }) {
-  const conceptual = state.errorLogs.filter((entry) => entry.reason.toLowerCase().includes("concept")).length || Math.ceil(state.errorLogs.length * 0.35);
+  const openErrors = state.errorLogs.filter((entry) => !entry.resolved);
+  const conceptual = openErrors.filter((entry) => entry.mistakeType === "Conceptual").length;
+  const repeatLoad = openErrors.reduce((sum, entry) => sum + entry.repeatCount, 0);
 
   function addError() {
     if (!errorForm.topic.trim() || !errorForm.reason.trim()) return;
@@ -894,12 +963,23 @@ function ErrorBookPanel({
       id: crypto.randomUUID(),
       subject: errorForm.subject,
       topic: errorForm.topic.trim(),
+      weakChapter: errorForm.weakChapter.trim() || errorForm.topic.trim(),
+      mistakeType: errorForm.mistakeType,
+      repeatCount: Math.max(1, Number(errorForm.repeatCount || 1)),
+      repairTask: errorForm.repairTask.trim() || `Redo ${errorForm.topic.trim()} and write the corrected method.`,
       reason: errorForm.reason.trim(),
       date: todayKey(),
       resolved: false
     };
     commitState({ ...state, errorLogs: [...state.errorLogs, entry] });
-    setErrorForm({ subject: "Physics", topic: "", reason: "" });
+    setErrorForm({ subject: "Physics", topic: "", weakChapter: "", mistakeType: "Conceptual", repeatCount: 1, repairTask: "", reason: "" });
+  }
+
+  function toggleResolved(entryId: string) {
+    commitState({
+      ...state,
+      errorLogs: state.errorLogs.map((entry) => entry.id === entryId ? { ...entry, resolved: !entry.resolved } : entry)
+    });
   }
 
   return (
@@ -908,27 +988,38 @@ function ErrorBookPanel({
       <div className={`grid gap-5 ${expanded ? "xl:grid-cols-[0.8fr_1.2fr]" : "lg:grid-cols-[220px_1fr]"}`}>
         <div className="grid place-items-center">
           <div className="relative grid h-40 w-40 place-items-center rounded-full" style={{ background: `conic-gradient(#ff4f7b 0 38%, #fbbf24 38% 62%, #22d3ee 62% 82%, #728199 82% 100%)` }}>
-            <div className="grid h-28 w-28 place-items-center rounded-full bg-[#071523] text-center"><strong className="text-3xl">{state.errorLogs.length}</strong><span className="-mt-8 text-sm text-edge-muted">Total Errors</span></div>
+            <div className="grid h-28 w-28 place-items-center rounded-full bg-[#071523] text-center"><strong className="text-3xl">{openErrors.length}</strong><span className="-mt-8 text-sm text-edge-muted">Open Errors</span></div>
           </div>
         </div>
         <div>
           <div className="mb-3 grid gap-2 text-sm text-edge-muted sm:grid-cols-2">
             <span><i className="mr-2 inline-block h-2 w-2 rounded-full bg-edge-pink" />Conceptual {conceptual}</span>
-            <span><i className="mr-2 inline-block h-2 w-2 rounded-full bg-edge-amber" />Silly mistake {Math.max(1, state.errorLogs.length - conceptual)}</span>
+            <span><i className="mr-2 inline-block h-2 w-2 rounded-full bg-edge-amber" />Repeat load {repeatLoad}</span>
           </div>
           {expanded && (
-            <div className="mb-4 grid gap-2 sm:grid-cols-[150px_1fr]">
+            <div className="mb-4 grid gap-2 sm:grid-cols-2">
               <select className="input-shell px-3" value={errorForm.subject} onChange={(event) => setErrorForm({ ...errorForm, subject: event.target.value as Subject })}>{subjects.map((subject) => <option key={subject}>{subject}</option>)}</select>
+              <select className="input-shell px-3" value={errorForm.mistakeType} onChange={(event) => setErrorForm({ ...errorForm, mistakeType: event.target.value as MistakeType })}>{mistakeTypes.map((type) => <option key={type}>{type}</option>)}</select>
               <input className="input-shell px-3" placeholder="Topic or concept" value={errorForm.topic} onChange={(event) => setErrorForm({ ...errorForm, topic: event.target.value })} />
+              <input className="input-shell px-3" placeholder="Weak chapter" value={errorForm.weakChapter} onChange={(event) => setErrorForm({ ...errorForm, weakChapter: event.target.value })} />
+              <input className="input-shell px-3" type="number" min="1" max="20" placeholder="Repeat count" value={errorForm.repeatCount} onChange={(event) => setErrorForm({ ...errorForm, repeatCount: Number(event.target.value) })} />
+              <input className="input-shell px-3" placeholder="Repair task" value={errorForm.repairTask} onChange={(event) => setErrorForm({ ...errorForm, repairTask: event.target.value })} />
               <textarea className="input-shell min-h-24 px-3 py-2 sm:col-span-2" placeholder="Why did this mistake happen?" value={errorForm.reason} onChange={(event) => setErrorForm({ ...errorForm, reason: event.target.value })} />
               <button className="edge-button px-4 sm:col-span-2" type="button" onClick={addError}>Save mistake</button>
             </div>
           )}
           <div className="space-y-2">
-            {state.errorLogs.slice(-4).reverse().map((entry) => (
-              <div key={entry.id} className="rounded-lg border border-edge-line bg-white/[0.035] p-3">
-                <div className="flex items-start justify-between gap-3"><strong>{entry.topic}</strong><span className="text-xs text-edge-muted">{entry.subject}</span></div>
-                <p className="mt-1 text-sm text-edge-muted">{entry.reason}</p>
+            {state.errorLogs.slice(-6).reverse().map((entry) => (
+              <div key={entry.id} className={`rounded-lg border p-3 ${entry.resolved ? "border-edge-line bg-white/[0.02] opacity-65" : "border-edge-line bg-white/[0.035]"}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <strong>{entry.topic}</strong>
+                    <p className="text-xs text-edge-muted">{entry.subject} | {entry.weakChapter} | {entry.mistakeType} | {entry.repeatCount}x</p>
+                  </div>
+                  <button className="ghost-button min-h-8 px-3 text-xs" type="button" onClick={() => toggleResolved(entry.id)}>{entry.resolved ? "Reopen" : "Resolve"}</button>
+                </div>
+                <p className="mt-2 text-sm text-edge-muted">{entry.reason}</p>
+                <p className="mt-2 rounded-md border border-edge-line bg-black/15 px-3 py-2 text-xs text-edge-lime">{entry.repairTask}</p>
               </div>
             ))}
           </div>
@@ -939,6 +1030,7 @@ function ErrorBookPanel({
 }
 
 function MockSummary({ latestMock }: { latestMock?: MockTest }) {
+  const weak = latestMock ? (["Mathematics", "Physics", "Chemistry"] as Subject[]).sort((a, b) => subjectScore(latestMock, a) - subjectScore(latestMock, b))[0] : undefined;
   return (
     <section className="edge-panel rounded-xl p-5">
       <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Mock Test Analytics</p><Link className="ghost-button px-3 text-sm" href="/mocks">View all tests</Link></div>
@@ -951,9 +1043,10 @@ function MockSummary({ latestMock }: { latestMock?: MockTest }) {
           </div>
           <div className="space-y-3">
             <p><strong>{latestMock.name}</strong><br /><span className="text-sm text-edge-muted">{latestMock.date}</span></p>
-            <SubjectBar label="Physics" value={latestMock.physics} max={100} color="#22d3ee" />
-            <SubjectBar label="Chemistry" value={latestMock.chemistry} max={100} color="#b7ff3c" />
-            <SubjectBar label="Mathematics" value={latestMock.math} max={100} color="#ff4f7b" />
+            {weak && <p className="rounded-lg border border-edge-line bg-black/15 px-3 py-2 text-xs text-edge-muted">Weakest: <strong className="text-edge-text">{weak}</strong> - {subjectWeakChapter(latestMock, weak)} - {subjectAccuracy(latestMock, weak)}% accuracy</p>}
+            <SubjectBar label="Physics" value={latestMock.physics} max={100} color="#22d3ee" detail={`${latestMock.physicsAccuracy}%`} />
+            <SubjectBar label="Chemistry" value={latestMock.chemistry} max={100} color="#b7ff3c" detail={`${latestMock.chemistryAccuracy}%`} />
+            <SubjectBar label="Mathematics" value={latestMock.math} max={100} color="#ff4f7b" detail={`${latestMock.mathAccuracy}%`} />
           </div>
         </div>
       ) : <p className="text-edge-muted">No mock test logged yet.</p>}
@@ -969,15 +1062,15 @@ function MockPanel({
   expanded
 }: {
   state: StudyState;
-  mockForm: { name: string; date: string; physics: number; chemistry: number; math: number };
-  setMockForm: (form: { name: string; date: string; physics: number; chemistry: number; math: number }) => void;
+  mockForm: { name: string; date: string; physics: number; chemistry: number; math: number; physicsAccuracy: number; chemistryAccuracy: number; mathAccuracy: number; physicsWeakChapter: string; chemistryWeakChapter: string; mathWeakChapter: string };
+  setMockForm: (form: { name: string; date: string; physics: number; chemistry: number; math: number; physicsAccuracy: number; chemistryAccuracy: number; mathAccuracy: number; physicsWeakChapter: string; chemistryWeakChapter: string; mathWeakChapter: string }) => void;
   commitState: (state: StudyState) => void;
   expanded: boolean;
 }) {
   function addMock() {
     if (!mockForm.name.trim()) return;
     commitState({ ...state, mockTests: [...state.mockTests, { ...mockForm, id: crypto.randomUUID() }] });
-    setMockForm({ name: "", date: todayKey(), physics: 0, chemistry: 0, math: 0 });
+    setMockForm({ name: "", date: todayKey(), physics: 0, chemistry: 0, math: 0, physicsAccuracy: 70, chemistryAccuracy: 70, mathAccuracy: 70, physicsWeakChapter: "", chemistryWeakChapter: "", mathWeakChapter: "" });
   }
 
   return (
@@ -987,9 +1080,15 @@ function MockPanel({
         <div className="mb-5 grid gap-2 md:grid-cols-6">
           <input className="input-shell px-3 md:col-span-2" placeholder="Test name" value={mockForm.name} onChange={(event) => setMockForm({ ...mockForm, name: event.target.value })} />
           <input className="input-shell px-3" type="date" value={mockForm.date} onChange={(event) => setMockForm({ ...mockForm, date: event.target.value })} />
-          <input className="input-shell px-3" type="number" min="0" max="100" value={mockForm.physics} onChange={(event) => setMockForm({ ...mockForm, physics: Number(event.target.value) })} />
-          <input className="input-shell px-3" type="number" min="0" max="100" value={mockForm.chemistry} onChange={(event) => setMockForm({ ...mockForm, chemistry: Number(event.target.value) })} />
-          <input className="input-shell px-3" type="number" min="0" max="100" value={mockForm.math} onChange={(event) => setMockForm({ ...mockForm, math: Number(event.target.value) })} />
+          <input className="input-shell px-3" type="number" min="0" max="100" placeholder="Physics marks" value={mockForm.physics} onChange={(event) => setMockForm({ ...mockForm, physics: Number(event.target.value) })} />
+          <input className="input-shell px-3" type="number" min="0" max="100" placeholder="Chem marks" value={mockForm.chemistry} onChange={(event) => setMockForm({ ...mockForm, chemistry: Number(event.target.value) })} />
+          <input className="input-shell px-3" type="number" min="0" max="100" placeholder="Math marks" value={mockForm.math} onChange={(event) => setMockForm({ ...mockForm, math: Number(event.target.value) })} />
+          <input className="input-shell px-3" type="number" min="0" max="100" placeholder="Physics accuracy" value={mockForm.physicsAccuracy} onChange={(event) => setMockForm({ ...mockForm, physicsAccuracy: Number(event.target.value) })} />
+          <input className="input-shell px-3" type="number" min="0" max="100" placeholder="Chem accuracy" value={mockForm.chemistryAccuracy} onChange={(event) => setMockForm({ ...mockForm, chemistryAccuracy: Number(event.target.value) })} />
+          <input className="input-shell px-3" type="number" min="0" max="100" placeholder="Math accuracy" value={mockForm.mathAccuracy} onChange={(event) => setMockForm({ ...mockForm, mathAccuracy: Number(event.target.value) })} />
+          <input className="input-shell px-3 md:col-span-2" placeholder="Physics weak chapter" value={mockForm.physicsWeakChapter} onChange={(event) => setMockForm({ ...mockForm, physicsWeakChapter: event.target.value })} />
+          <input className="input-shell px-3 md:col-span-2" placeholder="Chemistry weak chapter" value={mockForm.chemistryWeakChapter} onChange={(event) => setMockForm({ ...mockForm, chemistryWeakChapter: event.target.value })} />
+          <input className="input-shell px-3 md:col-span-2" placeholder="Math weak chapter" value={mockForm.mathWeakChapter} onChange={(event) => setMockForm({ ...mockForm, mathWeakChapter: event.target.value })} />
           <button className="edge-button px-4 md:col-span-6" type="button" onClick={addMock}>Log test</button>
         </div>
       )}
@@ -997,9 +1096,9 @@ function MockPanel({
         {state.mockTests.slice(-4).reverse().map((mock) => (
           <div key={mock.id} className="rounded-lg border border-edge-line bg-white/[0.035] p-4">
             <div className="mb-3 flex items-center justify-between"><strong>{mock.name}</strong><span className="text-sm text-edge-muted">{totalMockScore(mock)} / 300</span></div>
-            <SubjectBar label="P" value={mock.physics} max={100} color="#22d3ee" />
-            <SubjectBar label="C" value={mock.chemistry} max={100} color="#b7ff3c" />
-            <SubjectBar label="M" value={mock.math} max={100} color="#ff4f7b" />
+            <SubjectBar label={`P - ${mock.physicsWeakChapter || "Mixed"}`} value={mock.physics} max={100} color="#22d3ee" detail={`${mock.physicsAccuracy}%`} />
+            <SubjectBar label={`C - ${mock.chemistryWeakChapter || "Mixed"}`} value={mock.chemistry} max={100} color="#b7ff3c" detail={`${mock.chemistryAccuracy}%`} />
+            <SubjectBar label={`M - ${mock.mathWeakChapter || "Mixed"}`} value={mock.math} max={100} color="#ff4f7b" detail={`${mock.mathAccuracy}%`} />
           </div>
         ))}
       </div>
@@ -1007,12 +1106,12 @@ function MockPanel({
   );
 }
 
-function SubjectBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+function SubjectBar({ label, value, max, color, detail }: { label: string; value: number; max: number; color: string; detail?: string }) {
   return (
-    <div className="mt-2 grid grid-cols-[95px_1fr_42px] items-center gap-3 text-sm">
-      <span className="text-edge-muted">{label}</span>
+    <div className="mt-2 grid grid-cols-[minmax(88px,1fr)_1fr_58px] items-center gap-3 text-sm">
+      <span className="truncate text-edge-muted">{label}</span>
       <div className="h-2 rounded-full bg-white/10"><div className="h-full rounded-full" style={{ width: `${Math.min(100, (value / max) * 100)}%`, background: color }} /></div>
-      <strong>{value}</strong>
+      <strong>{value}{detail ? <span className="block text-[0.65rem] text-edge-muted">{detail}</span> : null}</strong>
     </div>
   );
 }
@@ -1034,7 +1133,7 @@ function TimerPanel({
 
   return (
     <section className="edge-panel rounded-xl p-5">
-      <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Pomodoro & Session Tracker</p><span className="text-xs text-edge-muted">How it works</span></div>
+      <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Pomodoro & Session Tracker</p><span className="text-xs text-edge-muted">25 min focus</span></div>
       <div className="grid place-items-center">
         <div className="relative grid h-52 w-52 place-items-center rounded-full" style={{ background: `conic-gradient(#b7ff3c 0 ${progress}%, rgba(255,255,255,0.08) ${progress}% 100%)` }}>
           <div className="grid h-40 w-40 place-items-center rounded-full bg-[#071523] text-center">
@@ -1060,21 +1159,74 @@ function ScratchpadPanel({ state, commitState }: { state: StudyState; commitStat
         value={state.scratchpad}
         onChange={(event) => commitState({ ...state, scratchpad: event.target.value })}
       />
-      <div className="mt-3 flex justify-end gap-2"><button className="ghost-button px-4" type="button" onClick={() => commitState({ ...state, scratchpad: "" })}>Clear</button><button className="ghost-button px-4" type="button"><Save size={16} /> Save Note</button></div>
+      <div className="mt-3 flex justify-end gap-2"><button className="ghost-button px-4" type="button" onClick={() => commitState({ ...state, scratchpad: "" })}>Clear</button><button className="ghost-button px-4" type="button" onClick={() => commitState({ ...state })}><Save size={16} /> Save Note</button></div>
     </section>
   );
 }
 
-function UpcomingPanel() {
+function UpcomingPanel({ state, commitState }: { state: StudyState; commitState: (state: StudyState) => void }) {
+  const items = buildRevisionItems(state).filter((item) => !item.completed).slice(0, 5);
+
+  function completeRevision(itemId: string) {
+    commitState({ ...state, revisionDone: { ...state.revisionDone, [itemId]: true } });
+  }
+
   return (
     <section className="edge-panel rounded-xl p-5">
-      <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Upcoming</p><button className="ghost-button px-3 text-sm" type="button">View calendar</button></div>
-      <div className="flex items-center gap-4 rounded-lg border border-edge-line bg-white/[0.035] p-4"><CalendarDays className="text-edge-pink" /><div><strong>Mock Test 16</strong><p className="text-sm text-edge-muted">Tomorrow, 9:00 AM</p></div></div>
+      <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Revision Queue</p><CalendarDays className="text-edge-pink" size={18} /></div>
+      <div className="space-y-2">
+        {items.length ? items.map((item) => {
+          const meta = subjectMeta[item.subject];
+          return (
+            <div key={item.id} className="rounded-lg border border-edge-line bg-white/[0.035] p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <strong>{item.topicTitle}</strong>
+                  <p className="text-xs text-edge-muted" style={{ color: meta.color }}>{item.subject} | {item.stage} | {item.status === "overdue" ? "Overdue" : item.status === "today" ? "Due today" : `Due ${item.dueDate}`}</p>
+                </div>
+                <button className="ghost-button min-h-8 px-3 text-xs" type="button" onClick={() => completeRevision(item.id)}>Done</button>
+              </div>
+            </div>
+          );
+        }) : (
+          <div className="rounded-lg border border-edge-line bg-white/[0.035] p-4">
+            <strong>No revision due yet</strong>
+            <p className="mt-1 text-sm text-edge-muted">Mark syllabus topics complete to create 1-day, 7-day, and 21-day revisions.</p>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
 
 function SyllabusPanel({ state, commitState, expanded }: { state: StudyState; commitState: (state: StudyState) => void; expanded: boolean }) {
+  function toggleTopic(topicId: string) {
+    const done = Boolean(state.completedTopics[topicId]);
+    const completedTopics = { ...state.completedTopics, [topicId]: !done };
+    const completedAt = { ...state.completedAt };
+    const revisionDone = { ...state.revisionDone };
+
+    if (done) {
+      delete completedAt[topicId];
+      delete revisionDone[revisionTaskKey(topicId, "1-day")];
+      delete revisionDone[revisionTaskKey(topicId, "7-day")];
+      delete revisionDone[revisionTaskKey(topicId, "21-day")];
+    } else {
+      completedAt[topicId] = todayKey();
+      revisionDone[revisionTaskKey(topicId, "1-day")] = false;
+      revisionDone[revisionTaskKey(topicId, "7-day")] = false;
+      revisionDone[revisionTaskKey(topicId, "21-day")] = false;
+    }
+
+    commitState({
+      ...state,
+      completedTopics,
+      completedAt,
+      revisionDone,
+      confidence: { ...state.confidence, [topicId]: done ? 40 : Math.max(70, state.confidence[topicId] || 70) }
+    });
+  }
+
   return (
     <section className="edge-panel mt-4 rounded-xl p-5">
       <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Syllabus Tracker</p><Zap className="text-edge-lime" /></div>
@@ -1087,11 +1239,12 @@ function SyllabusPanel({ state, commitState, expanded }: { state: StudyState; co
               key={topic.id}
               className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${done ? "border-edge-lime bg-edge-lime/10" : "border-edge-line bg-white/[0.035]"}`}
               type="button"
-              onClick={() => commitState({ ...state, completedTopics: { ...state.completedTopics, [topic.id]: !done }, confidence: { ...state.confidence, [topic.id]: done ? 40 : 70 } })}
+              onClick={() => toggleTopic(topic.id)}
             >
               <div className="mb-3 flex items-center justify-between"><span className="text-xs font-black uppercase tracking-[0.12em]" style={{ color: meta.color }}>{topic.subject}</span>{done && <Check className="text-edge-lime" size={18} />}</div>
               <strong>{topic.title}</strong>
-              <p className="mt-2 text-sm text-edge-muted">{topic.track} · {topic.priority}</p>
+              <p className="mt-2 text-sm text-edge-muted">{topic.track} | {topic.priority}</p>
+              <p className="mt-2 text-xs text-edge-muted">Confidence {state.confidence[topic.id] || 0}%{done && state.completedAt[topic.id] ? ` | Completed ${state.completedAt[topic.id]}` : ""}</p>
             </button>
           );
         })}
@@ -1137,8 +1290,8 @@ function SettingsPanel({
         </div>
       </div>
       <div className="mt-5 rounded-lg border border-edge-line bg-black/20 p-4">
-        <strong>Future AI hooks</strong>
-        <p className="mt-2 text-sm leading-6 text-edge-muted">AI plan generation and doubt solving are reserved for v2. No API key is required or used in this build.</p>
+        <strong>Trust-first roadmap</strong>
+        <p className="mt-2 text-sm leading-6 text-edge-muted">Keep the core free and useful first. Later paid ideas should be optional analytics, revision calendars, downloadable sheets, personal planner templates, or trusted affiliate resources.</p>
       </div>
     </section>
   );
