@@ -78,24 +78,24 @@ Good prompts:
 - "Make this look better on mobile."
 - "Explain the code you changed like I am new to coding."
 
-## Best First Features
+## Current Free Core
 
-Build these before thinking too much about money:
+Keep improving these before thinking too much about money:
 
-1. Daily plan generator for PCM.
-2. Chapter progress with difficulty and confidence.
-3. Revision reminders.
-4. Mock-test score tracker.
-5. Weak-topic repair list.
+1. Smart daily planner using mistakes, mocks, and syllabus gaps.
+2. Chapter progress with confidence and completion dates.
+3. Revision queue using 1-day, 7-day, and 21-day reviews.
+4. Mock-test tracker with scores, accuracy, and weak chapters.
+5. Error book with mistake type, repeat count, repair task, and resolved state.
 
 ## Money Path
 
 Start free and useful. Later, possible paid upgrades:
 
-- Premium study packs.
+- Advanced mock analytics.
+- Revision calendar upgrades.
 - Downloadable revision sheets.
-- Mock-test analytics.
-- Personal drop-year planner.
+- Personal drop-year planner templates.
 - Affiliate links for trusted books or courses.
 
 Avoid copying copyrighted questions or promising ranks. Trust matters more than shortcuts.

@@ -1,9 +1,24 @@
 # Copilot Instructions
 
-This repository is a beginner-friendly single-file web app for JEE Main preparation.
+This repository is a beginner-friendly Next.js web app for JEE Main PCM preparation.
 
-- Main app file: `index.html`
-- Keep the app usable without a build step.
-- Prefer small, readable changes.
-- Protect user privacy: do not commit API keys, secrets, `.env` files, or private study notes.
-- Test by opening `index.html` in a browser and checking desktop plus mobile widths.
+- Main routes: `app/`
+- Main dashboard UI: `components/study-app.tsx`
+- Study data and planner logic: `lib/`
+- Database schema: `supabase/schema.sql`
+- Legacy static page: `legacy/index.html`
+
+Use the Next.js app as the source of truth. Do not edit the legacy static file unless the user explicitly asks.
+
+Prioritize:
+
+- smart daily planning from mistakes, mocks, and syllabus gaps,
+- revision scheduling,
+- error-book repair loops,
+- mock analytics,
+- mobile usability,
+- simple beginner-readable code.
+
+Protect user privacy: do not commit API keys, secrets, `.env` files, or private study notes.
+
+Validate changes with TypeScript/build checks and a desktop plus mobile preview when UI changes.

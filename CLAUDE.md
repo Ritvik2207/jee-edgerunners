@@ -32,8 +32,7 @@ When making changes:
 
 ## Good Next Features
 
-- Better revision scheduling.
-- Chapter detail panels with formulas and common mistakes.
-- Mock test analytics by subject.
-- Exportable daily plan.
-- GitHub Pages publishing so users can open the site from a URL.
+- Chapter detail panels with formulas, traps, and short repair drills.
+- Stronger mock analytics across multiple tests.
+- Exportable daily plan and revision queue.
+- Supabase/Vercel setup so users can open the app from a public URL.

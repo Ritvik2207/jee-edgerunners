@@ -2,90 +2,74 @@
 
 ## North Star
 
-Build a useful JEE drop-year dashboard for PCM students who need clarity every day.
+Build a useful JEE Main drop-year dashboard for PCM students who need one clear study plan every day.
 
-The site should help students:
+The app should help students:
 
-- choose today's study work,
-- track chapter progress,
-- revise at the right time,
-- find weak topics after mocks,
-- stay consistent without feeling lost.
+- choose today's work from real weak areas,
+- complete syllabus topics with confidence tracking,
+- revise topics on a 1-day, 7-day, and 21-day rhythm,
+- convert mock-test weakness into repair work,
+- close repeated mistakes instead of only logging them.
 
 ## Current Stage
 
-The project is a single-page website in `index.html`.
+The project is now a Next.js + Supabase browser web app, not a single `index.html` page.
 
-It already has:
+Current working areas:
 
-- a polished visual design,
-- syllabus cards,
-- subject filters,
-- search,
-- checkbox progress tracking saved in the browser,
-- a simple study strategy section.
+- daily planner,
+- syllabus tracker,
+- revision queue,
+- error book,
+- mock test analytics,
+- scratchpad,
+- account/profile flow prepared for Supabase.
 
-## Next 5 Features
+The preserved old static file lives in `legacy/index.html`.
 
-Build in this order:
+## Current Priorities
 
-1. Daily PCM planner
-   - Student enters available hours.
-   - Site suggests Physics, Chemistry, and Math blocks for the day.
+1. Keep the planner useful.
+   - Use unresolved mistakes, weak mock subjects, low accuracy, and incomplete high-priority syllabus topics.
+   - Keep one revision block every day.
 
-2. Chapter confidence tracker
-   - Each chapter gets Not Started, Learning, Practicing, Revising, Strong.
+2. Keep revision visible.
+   - Completing a topic creates 1-day, 7-day, and 21-day revision items.
+   - The dashboard revision queue should replace static upcoming events.
 
-3. Revision calendar
-   - When a chapter is marked complete, the site schedules revision after 1 day, 7 days, and 21 days.
+3. Improve repair loops.
+   - Error book entries should include mistake type, weak chapter, repeat count, repair task, and resolved state.
+   - Mock tests should include subject scores, accuracy, and weak chapter fields.
 
-4. Mock test tracker
-   - Student enters marks, accuracy, mistakes, and weak chapters.
+4. Expand syllabus gradually.
+   - Use public syllabus chapter names only.
+   - Do not copy paid coaching material or proprietary questions.
 
-5. Weak-topic repair list
-   - Site turns mistakes into a short repair queue.
-
-## What Not To Build Yet
-
-Avoid these until the basic tool is useful:
-
-- paid subscriptions,
-- user accounts,
-- complicated AI chat,
-- mobile app,
-- huge question bank,
-- copied coaching material.
+5. Build trust before monetization.
+   - Keep the core free until it genuinely helps students.
+   - Future paid angles can include advanced mock analytics, revision calendars, downloadable sheets, personal planner templates, and trusted affiliate resources.
+   - Avoid rank-promise language.
 
 ## Gemini Pro Role
 
-Use Gemini for content and thinking:
+Use Gemini for content and study thinking:
 
-- summarize NCERT or public syllabus topics,
-- draft formula explanations,
-- compare study resources,
-- create sample study routines,
-- brainstorm feature names,
-- review whether explanations are student-friendly.
+- summarizing public syllabus topics,
+- drafting formula explanations,
+- comparing resources,
+- brainstorming study routines,
+- checking if explanations are student-friendly.
 
-Do not let Gemini become the place where the project files live. Keep the actual website work in this folder with Codex.
+Do not use Gemini as the source of truth for project files. The repository stays on GitHub.
 
 ## Codex Role
 
 Use Codex for project building:
 
-- edit the website,
-- explain changed code simply,
-- test features,
-- organize files,
+- edit files,
+- test the website,
+- debug broken behavior,
+- organize the app,
 - prepare deployment,
-- track what changed.
-
-## Best First Prompt To Send Codex
-
-"Add a daily PCM planner to this JEE dashboard. I am a drop-year student. Let me enter how many hours I have today, then show a balanced Physics, Chemistry, and Math plan with one revision block."
-
-## Learning Rule
-
-After each feature, ask:
-
-"Explain what changed in simple words and tell me the 3 coding ideas I should understand from this."
+- explain changed code in beginner-friendly language.

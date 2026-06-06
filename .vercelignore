@@ -1,0 +1,12 @@
+.next
+.qa
+.sixth
+.vercel
+node_modules
+dist
+build
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example

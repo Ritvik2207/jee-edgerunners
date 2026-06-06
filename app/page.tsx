@@ -1,9 +1,62 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Database, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, Database, ShieldCheck, Sparkles } from "lucide-react";
+import { absoluteUrl, routeTitle, siteDescription, siteName } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: routeTitle("Free JEE Main PCM Study Planner"),
+  description: siteDescription,
+  alternates: {
+    canonical: "/"
+  },
+  openGraph: {
+    title: "JEE Edgerunners - Free JEE Main PCM Study Planner",
+    description: siteDescription,
+    url: "/",
+    siteName,
+    type: "website"
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "JEE Edgerunners - Free JEE Main PCM Study Planner",
+    description: siteDescription
+  }
+};
 
 export default function HomePage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        name: siteName,
+        url: absoluteUrl("/"),
+        description: siteDescription,
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${absoluteUrl("/resources")}?q={search_term_string}`,
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "WebApplication",
+        name: siteName,
+        url: absoluteUrl("/dashboard"),
+        applicationCategory: "EducationalApplication",
+        operatingSystem: "Any",
+        description: siteDescription,
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "INR"
+        }
+      }
+    ]
+  };
+
   return (
     <main className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1fr_0.85fr]">
         <div>
           <p className="mb-4 text-sm font-black uppercase tracking-[0.26em] text-edge-lime">JEE Main | PCM Drop-Year</p>
@@ -17,6 +70,9 @@ export default function HomePage() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link className="edge-button px-5" href="/dashboard">
               Open dashboard <ArrowRight size={18} />
+            </Link>
+            <Link className="ghost-button px-5" href="/resources">
+              Free resources <BookOpen size={18} />
             </Link>
             <Link className="ghost-button px-5" href="/settings">
               Setup account saving
@@ -36,7 +92,7 @@ export default function HomePage() {
             {[
               ["Accounts", "Email/password and Google sign-in through Supabase.", ShieldCheck],
               ["Online data", "Progress, planner, mocks, mistakes, and notes are database-ready.", Database],
-              ["AI later", "Clean placeholder hooks for study-plan AI and doubt solving.", Sparkles]
+              ["Useful first", "Monetization and AI stay behind the core planner, revision, mocks, and repair workflow.", Sparkles]
             ].map(([title, text, Icon]) => (
               <div key={title as string} className="rounded-lg border border-edge-line bg-white/[0.035] p-4">
                 <div className="mb-2 flex items-center gap-3">

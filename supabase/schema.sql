@@ -6,8 +6,11 @@ create extension if not exists "pgcrypto";
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text,
-  role_label text default 'Dropper · 2026',
+  role_label text default 'Dropper 2026',
   onboarding_complete boolean default false,
+  streak_days integer not null default 0,
+  last_study_date date,
+  questions_solved integer not null default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -16,7 +19,9 @@ create table if not exists public.syllabus_progress (
   user_id uuid references auth.users(id) on delete cascade,
   topic_id text not null,
   completed boolean default false,
+  completed_at date,
   confidence integer default 50 check (confidence between 0 and 100),
+  revision_done jsonb default '{}'::jsonb,
   updated_at timestamptz default now(),
   primary key (user_id, topic_id)
 );
@@ -46,6 +51,10 @@ create table if not exists public.error_logs (
   user_id uuid references auth.users(id) on delete cascade,
   subject text not null check (subject in ('Physics', 'Chemistry', 'Mathematics')),
   topic text not null,
+  mistake_type text not null default 'Conceptual',
+  weak_chapter text default '',
+  repeat_count integer not null default 1 check (repeat_count between 1 and 50),
+  repair_task text default '',
   reason text not null,
   logged_on date not null default current_date,
   resolved boolean default false,
@@ -60,6 +69,12 @@ create table if not exists public.mock_tests (
   physics integer not null default 0 check (physics between 0 and 100),
   chemistry integer not null default 0 check (chemistry between 0 and 100),
   math integer not null default 0 check (math between 0 and 100),
+  physics_accuracy integer not null default 70 check (physics_accuracy between 0 and 100),
+  chemistry_accuracy integer not null default 70 check (chemistry_accuracy between 0 and 100),
+  math_accuracy integer not null default 70 check (math_accuracy between 0 and 100),
+  physics_weak_chapter text default '',
+  chemistry_weak_chapter text default '',
+  math_weak_chapter text default '',
   total integer generated always as (physics + chemistry + math) stored,
   created_at timestamptz default now()
 );
@@ -78,6 +93,22 @@ create table if not exists public.scratchpad_notes (
   body text default '',
   updated_at timestamptz default now()
 );
+
+alter table public.syllabus_progress add column if not exists completed_at date;
+alter table public.syllabus_progress add column if not exists revision_done jsonb default '{}'::jsonb;
+alter table public.profiles add column if not exists streak_days integer not null default 0;
+alter table public.profiles add column if not exists last_study_date date;
+alter table public.profiles add column if not exists questions_solved integer not null default 0;
+alter table public.error_logs add column if not exists mistake_type text not null default 'Conceptual';
+alter table public.error_logs add column if not exists weak_chapter text default '';
+alter table public.error_logs add column if not exists repeat_count integer not null default 1 check (repeat_count between 1 and 50);
+alter table public.error_logs add column if not exists repair_task text default '';
+alter table public.mock_tests add column if not exists physics_accuracy integer not null default 70 check (physics_accuracy between 0 and 100);
+alter table public.mock_tests add column if not exists chemistry_accuracy integer not null default 70 check (chemistry_accuracy between 0 and 100);
+alter table public.mock_tests add column if not exists math_accuracy integer not null default 70 check (math_accuracy between 0 and 100);
+alter table public.mock_tests add column if not exists physics_weak_chapter text default '';
+alter table public.mock_tests add column if not exists chemistry_weak_chapter text default '';
+alter table public.mock_tests add column if not exists math_weak_chapter text default '';
 
 alter table public.profiles enable row level security;
 alter table public.syllabus_progress enable row level security;
