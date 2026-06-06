@@ -94,6 +94,7 @@ const navigation = [
   { key: "syllabus", label: "Syllabus", href: "/syllabus", icon: GraduationCap, group: "Study" },
   { key: "error-book", label: "Error Book", href: "/error-book", icon: NotebookPen, group: "Study" },
   { key: "mocks", label: "Mock Tests", href: "/mocks", icon: Target, group: "Analytics" },
+  { key: "resources", label: "Resources", href: "/resources", icon: BookMarked, group: "Resources" },
   { key: "settings", label: "Settings", href: "/settings", icon: Settings, group: "Resources" }
 ] as const;
 
@@ -929,6 +930,10 @@ function Topbar({
         <div className="hidden items-center gap-5 text-sm md:flex">
           <div className="flex items-center gap-2"><Flame className="text-orange-400" size={20} /><span className="text-edge-muted">Saved streak</span><strong>{state.streakDays} days</strong></div>
           <div className="flex items-center gap-2"><Target className="text-edge-amber" size={20} /><span className="text-edge-muted">Focus</span><strong>{formatHours(state.hoursToday)}</strong></div>
+          <Link className="flex items-center gap-2 text-edge-muted transition hover:text-edge-text" href="/resources">
+            <BookMarked size={18} className="text-edge-cyan" />
+            <span>Resources</span>
+          </Link>
           <Link className="relative grid h-9 w-9 place-items-center rounded-lg border border-edge-line bg-white/[0.035]" href="/dashboard#revision-queue" aria-label={`${dueRevisionCount} revision items due`}>
             <Bell size={18} className="text-edge-text" />
             {dueRevisionCount > 0 && <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-edge-pink px-1 text-[0.65rem] font-black text-white">{dueRevisionCount}</span>}
