@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
 import {
   BarChart3,
@@ -32,11 +32,12 @@ import {
   UserCircle2,
   Zap
 } from "lucide-react";
-import { buildDailyPlan, formatMinutes } from "@/lib/planner";
+import { buildDailyPlan, formatMinutes, type PlannerBlock } from "@/lib/planner";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import {
   formatHours,
   buildRevisionItems,
+  markStudyActivity,
   mistakeTypes,
   practiceAccuracy,
   revisionTaskKey,
@@ -70,6 +71,21 @@ type UserState = {
   name: string;
   demo: boolean;
   profileComplete: boolean;
+};
+
+type ActiveSession = {
+  subject?: Subject;
+  topic: string;
+  source: string;
+  minutes: number;
+  blockKey?: PlannerBlock["key"];
+};
+
+type SearchResult = {
+  label: string;
+  detail: string;
+  href: string;
+  color?: string;
 };
 
 const navigation = [
@@ -110,6 +126,96 @@ function greetingName(user: UserState | null) {
   return user?.name.trim().split(/\s+/)[0] || "Student";
 }
 
+function loggedQuestionCount(state: StudyState) {
+  return state.questionsSolved + state.mockTests.length * 90;
+}
+
+function buildSearchResults(state: StudyState, rawQuery: string): SearchResult[] {
+  const query = rawQuery.trim().toLowerCase();
+  if (!query) return [];
+
+  const matches = (parts: Array<string | number | undefined>) => parts.some((part) => String(part || "").toLowerCase().includes(query));
+  const results: SearchResult[] = [];
+
+  syllabusTopics.forEach((topic) => {
+    if (matches([topic.title, topic.subject, topic.track, topic.priority])) {
+      results.push({
+        label: topic.title,
+        detail: `${topic.subject} | ${topic.track} | ${state.completedTopics[topic.id] ? "completed" : "incomplete"}`,
+        href: "/syllabus",
+        color: subjectMeta[topic.subject].color
+      });
+    }
+  });
+
+  state.errorLogs.forEach((entry) => {
+    if (matches([entry.topic, entry.weakChapter, entry.mistakeType, entry.reason, entry.repairTask])) {
+      results.push({
+        label: entry.topic,
+        detail: `${entry.subject} error | ${entry.resolved ? "resolved" : "open repair"}`,
+        href: "/error-book",
+        color: subjectMeta[entry.subject].color
+      });
+    }
+  });
+
+  state.mockTests.forEach((mock) => {
+    if (matches([mock.name, mock.physicsWeakChapter, mock.chemistryWeakChapter, mock.mathWeakChapter])) {
+      results.push({
+        label: mock.name,
+        detail: `${totalMockScore(mock)} / 300 | weakest ${weakestMockSubject({ ...state, mockTests: [mock] })?.subject || "mixed"}`,
+        href: "/mocks",
+        color: "#fbbf24"
+      });
+    }
+  });
+
+  if (matches([state.scratchpad])) {
+    results.push({
+      label: "Scratchpad note",
+      detail: "Saved formula or note text",
+      href: "/dashboard#scratchpad",
+      color: "#b7ff3c"
+    });
+  }
+
+  return results.slice(0, 8);
+}
+
+function sessionFromBlock(block: PlannerBlock): ActiveSession {
+  return {
+    subject: block.subject,
+    topic: block.detail,
+    source: block.label,
+    minutes: 25,
+    blockKey: block.key
+  };
+}
+
+function buildMockRepairEntries(mock: MockTest): ErrorLog[] {
+  return subjects.flatMap((subject) => {
+    const score = subjectScore(mock, subject);
+    const accuracy = subjectAccuracy(mock, subject);
+    const weakChapter = subjectWeakChapter(mock, subject).trim();
+
+    if (!weakChapter || (score >= 70 && accuracy >= 75)) return [];
+
+    const mistakeType: MistakeType = accuracy < 65 ? "Conceptual" : score < 65 ? "Time Pressure" : "Calculation";
+    return [{
+      id: crypto.randomUUID(),
+      subject,
+      topic: weakChapter,
+      weakChapter,
+      mistakeType,
+      repeatCount: 1,
+      repairTask: `Repair ${weakChapter}: revise notes, solve 20 targeted questions, and log every miss.`,
+      reason: `Created from ${mock.name}: ${score}/100 marks and ${accuracy}% accuracy.`,
+      date: todayKey(),
+      resolved: false
+    }];
+  });
+}
+
 export function StudyApp({ initialView }: StudyAppProps) {
   const [view] = useState<ViewKey>(initialView);
   const [state, setState] = useState<StudyState>(() => seedState());
@@ -144,12 +250,18 @@ export function StudyApp({ initialView }: StudyAppProps) {
   });
   const [timerSeconds, setTimerSeconds] = useState(25 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const supabase = useMemo(() => getSupabaseClient(), []);
   const plan = useMemo(() => buildDailyPlan(state), [state]);
   const latestMock = state.mockTests.at(-1);
-  const accuracy = practiceAccuracy(state);
-  const totalErrors = state.errorLogs.length;
+  const searchResults = useMemo(() => buildSearchResults(state, searchQuery), [state, searchQuery]);
+  const dueRevisionCount = useMemo(
+    () => buildRevisionItems(state).filter((item) => !item.completed && item.dueDate <= todayKey()).length,
+    [state]
+  );
   const hasLegacy = hasLegacyProgress();
 
   useEffect(() => {
@@ -196,14 +308,25 @@ export function StudyApp({ initialView }: StudyAppProps) {
   }, [supabase]);
 
   useEffect(() => {
+    function focusSearch(event: KeyboardEvent) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    }
+
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
+
+  useEffect(() => {
     if (!timerRunning) return;
     const timer = window.setInterval(() => {
       setTimerSeconds((seconds) => {
         if (seconds <= 1) {
           window.clearInterval(timer);
           setTimerRunning(false);
-          commitState({ ...state, sessionsToday: state.sessionsToday + 1 });
-          void recordPomodoro();
+          completePomodoro();
           return 25 * 60;
         }
         return seconds - 1;
@@ -211,7 +334,7 @@ export function StudyApp({ initialView }: StudyAppProps) {
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [timerRunning, state]);
+  }, [timerRunning, state, activeSession]);
 
   async function resolveUserState(authUser: SupabaseAuthUser): Promise<UserState> {
     const metadataName = authDisplayName(authUser);
@@ -257,7 +380,8 @@ export function StudyApp({ initialView }: StudyAppProps) {
   async function loadRemoteState(userId: string) {
     if (!supabase) return;
     try {
-      const [progress, planner, tasks, errors, mocks, scratchpad, sessions] = await Promise.all([
+      const [profile, progress, planner, tasks, errors, mocks, scratchpad, sessions] = await Promise.all([
+        supabase.from("profiles").select("streak_days, last_study_date, questions_solved").eq("id", userId).maybeSingle(),
         supabase.from("syllabus_progress").select("topic_id, completed, confidence, completed_at, revision_done").eq("user_id", userId),
         supabase.from("planner_days").select("hours").eq("user_id", userId).eq("plan_date", todayKey()).maybeSingle(),
         supabase.from("planner_tasks").select("block_key, task_text").eq("user_id", userId).eq("plan_date", todayKey()),
@@ -305,6 +429,9 @@ export function StudyApp({ initialView }: StudyAppProps) {
       }));
       next.scratchpad = scratchpad.data?.body || next.scratchpad;
       next.sessionsToday = sessions.data?.length || 0;
+      next.questionsSolved = Number(profile.data?.questions_solved ?? next.questionsSolved);
+      next.streakDays = Number(profile.data?.streak_days ?? next.streakDays);
+      next.lastStudyDate = profile.data?.last_study_date || next.lastStudyDate;
       setState(next);
       writeLocalState(next);
       setSyncStatus("Synced with Supabase");
@@ -378,6 +505,16 @@ export function StudyApp({ initialView }: StudyAppProps) {
         taskRows.length ? supabase.from("planner_tasks").upsert(taskRows, { onConflict: "user_id,plan_date,block_key" }) : Promise.resolve(),
         errorRows.length ? supabase.from("error_logs").upsert(errorRows, { onConflict: "id" }) : Promise.resolve(),
         mockRows.length ? supabase.from("mock_tests").upsert(mockRows, { onConflict: "id" }) : Promise.resolve(),
+        supabase.from("profiles").upsert(
+          {
+            id: user.id,
+            streak_days: next.streakDays,
+            last_study_date: next.lastStudyDate || null,
+            questions_solved: next.questionsSolved,
+            updated_at: new Date().toISOString()
+          },
+          { onConflict: "id" }
+        ),
         supabase.from("scratchpad_notes").upsert({ user_id: user.id, body: next.scratchpad }, { onConflict: "user_id" })
       ]);
       setSyncStatus("Saved online");
@@ -391,13 +528,33 @@ export function StudyApp({ initialView }: StudyAppProps) {
     void persistState(next);
   }
 
-  async function recordPomodoro() {
+  function startSession(block?: PlannerBlock) {
+    const nextBlock = block || plan.find((item) => !state.plannerTasks[item.key]) || plan[0];
+    if (!nextBlock) return;
+
+    setActiveSession(sessionFromBlock(nextBlock));
+    setTimerSeconds(25 * 60);
+    setTimerRunning(true);
+    setSyncStatus(`Session started: ${nextBlock.detail}`);
+  }
+
+  function completePomodoro() {
+    const next = markStudyActivity({
+      ...state,
+      sessionsToday: state.sessionsToday + 1
+    });
+    commitState(next);
+    void recordPomodoro(activeSession);
+    setSyncStatus(`Completed ${activeSession?.topic || "focus session"}`);
+  }
+
+  async function recordPomodoro(session: ActiveSession | null) {
     if (!supabase || !user || user.demo) return;
     await supabase.from("pomodoro_sessions").insert({
       user_id: user.id,
-      subject: "Physics",
-      topic: "Units and Measurements",
-      duration_minutes: 25
+      subject: session?.subject || null,
+      topic: session?.topic || "Manual focus session",
+      duration_minutes: session?.minutes || 25
     });
   }
 
@@ -509,10 +666,26 @@ export function StudyApp({ initialView }: StudyAppProps) {
       <Sidebar activeView={view} />
 
       <main className="min-w-0 pb-24 lg:pb-0">
-        <Topbar user={user} state={state} syncStatus={syncStatus} signOut={signOut} />
+        <Topbar
+          user={user}
+          state={state}
+          syncStatus={syncStatus}
+          signOut={signOut}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          searchInputRef={searchInputRef}
+          dueRevisionCount={dueRevisionCount}
+        />
 
         <div className="mx-auto max-w-[1530px] px-4 py-8 sm:px-6 lg:px-10">
           <Header state={state} user={user} />
+          {searchQuery.trim() && (
+            <SearchResultsPanel
+              query={searchQuery}
+              results={searchResults}
+              clearSearch={() => setSearchQuery("")}
+            />
+          )}
 
           {(view === "dashboard" || view === "planner") && (
             <DashboardGrid
@@ -523,6 +696,8 @@ export function StudyApp({ initialView }: StudyAppProps) {
               timerRunning={timerRunning}
               setTimerRunning={setTimerRunning}
               setTimerSeconds={setTimerSeconds}
+              activeSession={activeSession}
+              startSession={startSession}
               commitState={commitState}
             />
           )}
@@ -718,19 +893,46 @@ function MobileNav({ activeView }: { activeView: ViewKey }) {
   );
 }
 
-function Topbar({ user, state, syncStatus, signOut }: { user: UserState | null; state: StudyState; syncStatus: string; signOut: () => void }) {
+function Topbar({
+  user,
+  state,
+  syncStatus,
+  signOut,
+  searchQuery,
+  setSearchQuery,
+  searchInputRef,
+  dueRevisionCount
+}: {
+  user: UserState | null;
+  state: StudyState;
+  syncStatus: string;
+  signOut: () => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  searchInputRef: RefObject<HTMLInputElement | null>;
+  dueRevisionCount: number;
+}) {
   return (
     <header className="sticky top-0 z-20 border-b border-edge-line bg-[#040c14]/88 px-4 py-3 backdrop-blur-xl sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-[1530px] items-center gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-edge-line bg-[#071523] px-3">
           <Search size={17} className="text-edge-muted" />
-          <input className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-edge-muted" placeholder="Search topics, tests, notes..." />
+          <input
+            ref={searchInputRef}
+            className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-edge-muted"
+            placeholder="Search topics, tests, notes..."
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
           <kbd className="hidden rounded border border-edge-line px-2 py-1 text-xs text-edge-muted sm:inline">Ctrl K</kbd>
         </div>
         <div className="hidden items-center gap-5 text-sm md:flex">
-          <div className="flex items-center gap-2"><Flame className="text-orange-400" size={20} /><span className="text-edge-muted">Streak</span><strong>{state.streakDays} days</strong></div>
+          <div className="flex items-center gap-2"><Flame className="text-orange-400" size={20} /><span className="text-edge-muted">Saved streak</span><strong>{state.streakDays} days</strong></div>
           <div className="flex items-center gap-2"><Target className="text-edge-amber" size={20} /><span className="text-edge-muted">Focus</span><strong>{formatHours(state.hoursToday)}</strong></div>
-          <Bell size={20} className="text-edge-text" />
+          <Link className="relative grid h-9 w-9 place-items-center rounded-lg border border-edge-line bg-white/[0.035]" href="/dashboard#revision-queue" aria-label={`${dueRevisionCount} revision items due`}>
+            <Bell size={18} className="text-edge-text" />
+            {dueRevisionCount > 0 && <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-edge-pink px-1 text-[0.65rem] font-black text-white">{dueRevisionCount}</span>}
+          </Link>
         </div>
         <button className="hidden items-center gap-3 rounded-lg border border-edge-line bg-white/[0.04] px-3 py-2 text-left sm:flex" type="button" onClick={signOut}>
           <UserCircle2 className="text-edge-lime" size={24} />
@@ -756,9 +958,9 @@ function Header({ state, user }: { state: StudyState; user: UserState | null }) 
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:min-w-[720px] xl:grid-cols-4">
         <StatCard label="Study Hours Today" value={formatHours(state.hoursToday)} detail="/ 8h goal" progress={(state.hoursToday / 8) * 100} />
-        <StatCard label="Sessions" value={String(state.sessionsToday)} detail="+1 from yesterday" />
+        <StatCard label="Sessions" value={String(state.sessionsToday)} detail="Completed today" />
         <StatCard label="Accuracy (Practice)" value={`${practiceAccuracy(state)}%`} detail={weak ? `Weakest ${weak.subject}` : "No mock yet"} />
-        <StatCard label="Questions Solved" value={String(state.questionsSolved)} detail="+28 from yesterday" />
+        <StatCard label="Questions Logged" value={String(loggedQuestionCount(state))} detail="Mocks + manual count" />
       </div>
     </div>
   );
@@ -777,12 +979,41 @@ function StatCard({ label, value, detail, progress }: { label: string; value: st
   );
 }
 
+function SearchResultsPanel({ query, results, clearSearch }: { query: string; results: SearchResult[]; clearSearch: () => void }) {
+  return (
+    <section className="edge-panel mb-6 rounded-xl p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-edge-muted">Search results for <strong className="text-edge-text">{query.trim()}</strong></p>
+        <button className="ghost-button min-h-8 px-3 text-xs" type="button" onClick={clearSearch}>Clear</button>
+      </div>
+      {results.length ? (
+        <div className="grid gap-2 md:grid-cols-2">
+          {results.map((result) => (
+            <Link
+              key={`${result.href}-${result.label}-${result.detail}`}
+              className="rounded-lg border border-edge-line bg-white/[0.035] p-3 transition hover:border-edge-cyan hover:bg-edge-cyan/10"
+              href={result.href}
+              onClick={clearSearch}
+            >
+              <span className="text-xs font-black uppercase tracking-[0.14em]" style={{ color: result.color || "#b7ff3c" }}>Open</span>
+              <strong className="mt-1 block">{result.label}</strong>
+              <span className="mt-1 block text-sm text-edge-muted">{result.detail}</span>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-edge-line bg-black/15 p-3 text-sm text-edge-muted">No saved topic, mock, mistake, or note matched this search.</p>
+      )}
+    </section>
+  );
+}
+
 function MetricStrip({ state, accuracy }: { state: StudyState; accuracy: number }) {
   return (
     <div className="edge-panel mb-4 hidden gap-3 rounded-xl p-4 sm:grid sm:grid-cols-2 xl:grid-cols-5">
       <MiniMetric icon={Clock3} label="Study Time" value={formatHours(state.hoursToday)} />
       <MiniMetric icon={Target} label="Sessions" value={String(state.sessionsToday)} />
-      <MiniMetric icon={ClipboardList} label="Questions" value={String(state.questionsSolved)} />
+      <MiniMetric icon={ClipboardList} label="Questions" value={String(loggedQuestionCount(state))} />
       <MiniMetric icon={LineChart} label="Accuracy" value={`${accuracy}%`} />
       <MiniMetric icon={Flame} label="Day Streak" value={String(state.streakDays)} />
     </div>
@@ -801,6 +1032,8 @@ function DashboardGrid({
   timerRunning,
   setTimerRunning,
   setTimerSeconds,
+  activeSession,
+  startSession,
   commitState
 }: {
   state: StudyState;
@@ -810,22 +1043,34 @@ function DashboardGrid({
   timerRunning: boolean;
   setTimerRunning: (running: boolean) => void;
   setTimerSeconds: (seconds: number) => void;
+  activeSession: ActiveSession | null;
+  startSession: (block?: PlannerBlock) => void;
   commitState: (state: StudyState) => void;
 }) {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
-      <PlannerPanel state={state} plan={plan} commitState={commitState} />
+      <PlannerPanel state={state} plan={plan} startSession={startSession} commitState={commitState} />
       <ProgressSummary state={state} />
       <ErrorSummary state={state} />
       <MockSummary latestMock={latestMock} />
-      <TimerPanel timerSeconds={timerSeconds} timerRunning={timerRunning} setTimerRunning={setTimerRunning} setTimerSeconds={setTimerSeconds} />
+      <TimerPanel timerSeconds={timerSeconds} timerRunning={timerRunning} activeSession={activeSession} setTimerRunning={setTimerRunning} setTimerSeconds={setTimerSeconds} />
       <ScratchpadPanel state={state} commitState={commitState} />
       <UpcomingPanel state={state} commitState={commitState} />
     </div>
   );
 }
 
-function PlannerPanel({ state, plan, commitState }: { state: StudyState; plan: ReturnType<typeof buildDailyPlan>; commitState: (state: StudyState) => void }) {
+function PlannerPanel({
+  state,
+  plan,
+  startSession,
+  commitState
+}: {
+  state: StudyState;
+  plan: ReturnType<typeof buildDailyPlan>;
+  startSession: (block?: PlannerBlock) => void;
+  commitState: (state: StudyState) => void;
+}) {
   const doneBlocks = plan.filter((block) => Boolean(state.plannerTasks[block.key])).length;
 
   return (
@@ -852,6 +1097,7 @@ function PlannerPanel({ state, plan, commitState }: { state: StudyState; plan: R
               />
             </div>
             <span className="justify-self-start rounded-full border border-edge-line px-3 py-1 text-xs font-bold sm:justify-self-auto">{formatMinutes(block.minutes)}</span>
+            <button className="ghost-button col-span-2 min-h-8 px-3 text-xs sm:col-span-4" type="button" onClick={() => startSession(block)}>Study this block</button>
           </div>
         ))}
       </div>
@@ -868,7 +1114,7 @@ function PlannerPanel({ state, plan, commitState }: { state: StudyState; plan: R
             onChange={(event) => commitState({ ...state, hoursToday: Number(event.target.value) })}
           />
         </label>
-        <button className="edge-button px-4" type="button">
+        <button className="edge-button px-4" type="button" onClick={() => startSession()}>
           Start Next Session <Play size={16} />
         </button>
       </div>
@@ -1067,9 +1313,19 @@ function MockPanel({
   commitState: (state: StudyState) => void;
   expanded: boolean;
 }) {
+  const [repairNotice, setRepairNotice] = useState("");
+
   function addMock() {
     if (!mockForm.name.trim()) return;
-    commitState({ ...state, mockTests: [...state.mockTests, { ...mockForm, id: crypto.randomUUID() }] });
+    const mock: MockTest = { ...mockForm, id: crypto.randomUUID() };
+    const repairs = buildMockRepairEntries(mock);
+
+    commitState(markStudyActivity({
+      ...state,
+      mockTests: [...state.mockTests, mock],
+      errorLogs: [...state.errorLogs, ...repairs]
+    }));
+    setRepairNotice(repairs.length ? `Added ${repairs.length} weak-chapter repair task${repairs.length === 1 ? "" : "s"} to Error Book.` : "Mock logged. No weak chapter crossed the repair threshold.");
     setMockForm({ name: "", date: todayKey(), physics: 0, chemistry: 0, math: 0, physicsAccuracy: 70, chemistryAccuracy: 70, mathAccuracy: 70, physicsWeakChapter: "", chemistryWeakChapter: "", mathWeakChapter: "" });
   }
 
@@ -1090,6 +1346,7 @@ function MockPanel({
           <input className="input-shell px-3 md:col-span-2" placeholder="Chemistry weak chapter" value={mockForm.chemistryWeakChapter} onChange={(event) => setMockForm({ ...mockForm, chemistryWeakChapter: event.target.value })} />
           <input className="input-shell px-3 md:col-span-2" placeholder="Math weak chapter" value={mockForm.mathWeakChapter} onChange={(event) => setMockForm({ ...mockForm, mathWeakChapter: event.target.value })} />
           <button className="edge-button px-4 md:col-span-6" type="button" onClick={addMock}>Log test</button>
+          {repairNotice && <p className="rounded-lg border border-edge-line bg-black/15 p-3 text-sm text-edge-muted md:col-span-6">{repairNotice}</p>}
         </div>
       )}
       <div className="grid gap-3 lg:grid-cols-2">
@@ -1119,11 +1376,13 @@ function SubjectBar({ label, value, max, color, detail }: { label: string; value
 function TimerPanel({
   timerSeconds,
   timerRunning,
+  activeSession,
   setTimerRunning,
   setTimerSeconds
 }: {
   timerSeconds: number;
   timerRunning: boolean;
+  activeSession: ActiveSession | null;
   setTimerRunning: (running: boolean) => void;
   setTimerSeconds: (seconds: number) => void;
 }) {
@@ -1135,6 +1394,11 @@ function TimerPanel({
     <section className="edge-panel rounded-xl p-5">
       <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Pomodoro & Session Tracker</p><span className="text-xs text-edge-muted">25 min focus</span></div>
       <div className="grid place-items-center">
+        <div className="mb-4 w-full rounded-lg border border-edge-line bg-black/15 p-3 text-center">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-edge-muted">{activeSession?.source || "Manual session"}</p>
+          <strong className="mt-1 block">{activeSession?.topic || "Pick a planner block or start a manual focus session"}</strong>
+          {activeSession?.subject && <p className="mt-1 text-sm text-edge-muted">{activeSession.subject}</p>}
+        </div>
         <div className="relative grid h-52 w-52 place-items-center rounded-full" style={{ background: `conic-gradient(#b7ff3c 0 ${progress}%, rgba(255,255,255,0.08) ${progress}% 100%)` }}>
           <div className="grid h-40 w-40 place-items-center rounded-full bg-[#071523] text-center">
             <strong className="text-5xl">{String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}</strong>
@@ -1168,11 +1432,11 @@ function UpcomingPanel({ state, commitState }: { state: StudyState; commitState:
   const items = buildRevisionItems(state).filter((item) => !item.completed).slice(0, 5);
 
   function completeRevision(itemId: string) {
-    commitState({ ...state, revisionDone: { ...state.revisionDone, [itemId]: true } });
+    commitState(markStudyActivity({ ...state, revisionDone: { ...state.revisionDone, [itemId]: true } }));
   }
 
   return (
-    <section className="edge-panel rounded-xl p-5">
+    <section id="revision-queue" className="edge-panel scroll-mt-24 rounded-xl p-5">
       <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Revision Queue</p><CalendarDays className="text-edge-pink" size={18} /></div>
       <div className="space-y-2">
         {items.length ? items.map((item) => {
@@ -1218,12 +1482,21 @@ function SyllabusPanel({ state, commitState, expanded }: { state: StudyState; co
       revisionDone[revisionTaskKey(topicId, "21-day")] = false;
     }
 
-    commitState({
+    const next = {
       ...state,
       completedTopics,
       completedAt,
       revisionDone,
       confidence: { ...state.confidence, [topicId]: done ? 40 : Math.max(70, state.confidence[topicId] || 70) }
+    };
+
+    commitState(done ? next : markStudyActivity(next));
+  }
+
+  function updateConfidence(topicId: string, confidence: number) {
+    commitState({
+      ...state,
+      confidence: { ...state.confidence, [topicId]: Math.max(0, Math.min(100, confidence)) }
     });
   }
 
@@ -1234,18 +1507,54 @@ function SyllabusPanel({ state, commitState, expanded }: { state: StudyState; co
         {syllabusTopics.map((topic) => {
           const done = Boolean(state.completedTopics[topic.id]);
           const meta = subjectMeta[topic.subject];
+          const confidence = state.confidence[topic.id] || 0;
           return (
-            <button
+            <article
               key={topic.id}
-              className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${done ? "border-edge-lime bg-edge-lime/10" : "border-edge-line bg-white/[0.035]"}`}
-              type="button"
-              onClick={() => toggleTopic(topic.id)}
+              className={`rounded-lg border p-4 transition hover:-translate-y-0.5 ${done ? "border-edge-lime bg-edge-lime/10" : "border-edge-line bg-white/[0.035]"}`}
             >
-              <div className="mb-3 flex items-center justify-between"><span className="text-xs font-black uppercase tracking-[0.12em]" style={{ color: meta.color }}>{topic.subject}</span>{done && <Check className="text-edge-lime" size={18} />}</div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="text-xs font-black uppercase tracking-[0.12em]" style={{ color: meta.color }}>{topic.subject}</span>
+                <button
+                  className={`grid h-8 w-8 place-items-center rounded-full border ${done ? "border-edge-lime bg-edge-lime text-[#071014]" : "border-edge-line text-edge-muted"}`}
+                  type="button"
+                  aria-label={done ? `Reopen ${topic.title}` : `Complete ${topic.title}`}
+                  onClick={() => toggleTopic(topic.id)}
+                >
+                  {done ? <Check size={16} /> : null}
+                </button>
+              </div>
               <strong>{topic.title}</strong>
               <p className="mt-2 text-sm text-edge-muted">{topic.track} | {topic.priority}</p>
-              <p className="mt-2 text-xs text-edge-muted">Confidence {state.confidence[topic.id] || 0}%{done && state.completedAt[topic.id] ? ` | Completed ${state.completedAt[topic.id]}` : ""}</p>
-            </button>
+              <label className="mt-3 grid gap-2 text-xs text-edge-muted">
+                <span className="flex items-center justify-between gap-3">
+                  Confidence
+                  <span className="flex items-center gap-2">
+                    <input
+                      className="input-shell h-8 w-20 px-2 text-right text-xs"
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="5"
+                      aria-label={`${topic.title} confidence`}
+                      value={confidence}
+                      onChange={(event) => updateConfidence(topic.id, Number(event.target.value))}
+                    />
+                    <strong className="text-edge-text">%</strong>
+                  </span>
+                </span>
+                <input
+                  className="accent-edge-lime"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={confidence}
+                  onChange={(event) => updateConfidence(topic.id, Number(event.target.value))}
+                />
+              </label>
+              {done && state.completedAt[topic.id] ? <p className="mt-2 text-xs text-edge-muted">Completed {state.completedAt[topic.id]}</p> : null}
+            </article>
           );
         })}
       </div>

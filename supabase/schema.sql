@@ -8,6 +8,9 @@ create table if not exists public.profiles (
   display_name text,
   role_label text default 'Dropper 2026',
   onboarding_complete boolean default false,
+  streak_days integer not null default 0,
+  last_study_date date,
+  questions_solved integer not null default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -93,6 +96,9 @@ create table if not exists public.scratchpad_notes (
 
 alter table public.syllabus_progress add column if not exists completed_at date;
 alter table public.syllabus_progress add column if not exists revision_done jsonb default '{}'::jsonb;
+alter table public.profiles add column if not exists streak_days integer not null default 0;
+alter table public.profiles add column if not exists last_study_date date;
+alter table public.profiles add column if not exists questions_solved integer not null default 0;
 alter table public.error_logs add column if not exists mistake_type text not null default 'Conceptual';
 alter table public.error_logs add column if not exists weak_chapter text default '';
 alter table public.error_logs add column if not exists repeat_count integer not null default 1 check (repeat_count between 1 and 50);

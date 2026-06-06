@@ -87,7 +87,10 @@ function normalizeState(value: Partial<StudyState>): StudyState {
     completedTopics: { ...seeded.completedTopics, ...(value.completedTopics || {}) },
     completedAt: { ...seeded.completedAt, ...(value.completedAt || {}) },
     confidence: { ...seeded.confidence, ...(value.confidence || {}) },
-    revisionDone: { ...seeded.revisionDone, ...(value.revisionDone || {}) }
+    revisionDone: { ...seeded.revisionDone, ...(value.revisionDone || {}) },
+    questionsSolved: Number(value.questionsSolved ?? seeded.questionsSolved),
+    streakDays: Number(value.streakDays ?? seeded.streakDays),
+    lastStudyDate: value.lastStudyDate || seeded.lastStudyDate
   };
 
   next.errorLogs = (value.errorLogs || seeded.errorLogs).map((entry) => ({

@@ -53,6 +53,7 @@ export type StudyState = {
   sessionsToday: number;
   questionsSolved: number;
   streakDays: number;
+  lastStudyDate: string;
 };
 
 export type RevisionItem = {
@@ -266,8 +267,20 @@ export function seedState(): StudyState {
     ],
     scratchpad: "# Quick scratchpad\ns = ut + 1/2 at^2\nv^2 = u^2 + 2as\n\nlog rules:\nlog(ab) = loga + logb",
     sessionsToday: 4,
-    questionsSolved: 126,
-    streakDays: 12
+    questionsSolved: 0,
+    streakDays: 1,
+    lastStudyDate: today
+  };
+}
+
+export function markStudyActivity(state: StudyState, activityDate = todayKey()): StudyState {
+  if (state.lastStudyDate === activityDate) return state;
+
+  const yesterday = addDays(activityDate, -1);
+  return {
+    ...state,
+    streakDays: state.lastStudyDate === yesterday ? state.streakDays + 1 : 1,
+    lastStudyDate: activityDate
   };
 }
 
