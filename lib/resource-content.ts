@@ -10,6 +10,12 @@ export type ResourceFaq = {
   answer: string;
 };
 
+export type ResourceAppAction = {
+  label: string;
+  href: string;
+  description: string;
+};
+
 export type ResourceArticle = {
   slug: string;
   title: string;
@@ -18,6 +24,7 @@ export type ResourceArticle = {
   keywords: string[];
   sections: ResourceSection[];
   faqs: ResourceFaq[];
+  appActions: ResourceAppAction[];
   relatedSlugs: string[];
 };
 
@@ -64,6 +71,11 @@ export const resourceArticles: ResourceArticle[] = [
           "Start balanced, then adjust based on weak chapters, mock accuracy, and unresolved mistakes."
       }
     ],
+    appActions: [
+      { label: "Build today's smart plan", href: "/planner", description: "Enter today's study hours and let weak areas shape the PCM split." },
+      { label: "Add a weak chapter", href: "/error-book", description: "Log one unresolved mistake so the planner has real repair data." },
+      { label: "Check action queue", href: "/dashboard#action-queue", description: "Review dated repair and revision actions before starting." }
+    ],
     relatedSlugs: ["jee-main-revision-schedule", "jee-main-mock-test-analysis", "drop-year-pcm-study-system"]
   },
   {
@@ -107,6 +119,11 @@ export const resourceArticles: ResourceArticle[] = [
         answer:
           "Yes. Use a few mixed questions so the review tests recall, not only reading speed."
       }
+    ],
+    appActions: [
+      { label: "Mark a chapter complete", href: "/syllabus#chapter-detail", description: "Open a chapter detail and mark it complete to create 1-day, 7-day, and 21-day revisions." },
+      { label: "Review the action queue", href: "/dashboard#action-queue", description: "See upcoming and overdue revision actions with dates." },
+      { label: "Repair a failed revision", href: "/error-book", description: "Turn a repeated miss into a logged mistake instead of ignoring it." }
     ],
     relatedSlugs: ["jee-main-daily-study-planner", "jee-main-error-book-method", "jee-main-formula-sheets"]
   },
@@ -152,6 +169,11 @@ export const resourceArticles: ResourceArticle[] = [
           "Yes. Silly mistakes become patterns when ignored. Track what triggered them and what guardrail will prevent them."
       }
     ],
+    appActions: [
+      { label: "Log a mistake", href: "/error-book", description: "Add subject, weak chapter, mistake type, repeat count, and repair task." },
+      { label: "Resolve an action", href: "/dashboard#action-queue", description: "Mark a repair resolved only after the correction work is done." },
+      { label: "Use repair in planner", href: "/planner", description: "Let unresolved mistakes influence today's plan." }
+    ],
     relatedSlugs: ["jee-main-mock-test-analysis", "jee-main-revision-schedule", "drop-year-pcm-study-system"]
   },
   {
@@ -195,6 +217,11 @@ export const resourceArticles: ResourceArticle[] = [
         answer:
           "Both matter. Marks show output, accuracy shows how reliable the attempts were. Low accuracy needs repair even if marks look acceptable."
       }
+    ],
+    appActions: [
+      { label: "Log mock scores", href: "/mocks", description: "Save marks, accuracy, and weak chapter for Physics, Chemistry, and Maths." },
+      { label: "Add weak-chapter repairs", href: "/dashboard#action-queue", description: "Use the generated mock repair actions in the dashboard queue." },
+      { label: "Study the weakest block", href: "/planner", description: "Let the next planner block focus on mock weakness." }
     ],
     relatedSlugs: ["jee-main-error-book-method", "jee-main-daily-study-planner", "drop-year-pcm-study-system"]
   },
@@ -240,6 +267,11 @@ export const resourceArticles: ResourceArticle[] = [
           "Short enough to revise. If it becomes too long, split it by chapter or subject."
       }
     ],
+    appActions: [
+      { label: "Open chapter details", href: "/syllabus#chapter-detail", description: "Use formula, trap, repair, and guidance notes for a selected chapter." },
+      { label: "Save recall notes", href: "/dashboard#scratchpad", description: "Pin formulas or traps in the scratchpad for quick review." },
+      { label: "Create repair action", href: "/syllabus#chapter-detail", description: "Add a chapter repair when a formula trap repeats." }
+    ],
     relatedSlugs: ["jee-main-revision-schedule", "jee-main-error-book-method", "drop-year-pcm-study-system"]
   },
   {
@@ -284,12 +316,36 @@ export const resourceArticles: ResourceArticle[] = [
           "Yes. JEE Edgerunners keeps the dashboard usable in demo/local mode. Account sync is optional when Supabase is configured."
       }
     ],
+    appActions: [
+      { label: "Open dashboard", href: "/dashboard", description: "Start from the planner, action queue, mocks, and scratchpad in one place." },
+      { label: "Track syllabus", href: "/syllabus", description: "Mark chapters complete and use confidence to keep the plan honest." },
+      { label: "Analyze one mock", href: "/mocks", description: "Add a mock test and convert weak chapters into repair actions." }
+    ],
     relatedSlugs: ["jee-main-daily-study-planner", "jee-main-mock-test-analysis", "jee-main-revision-schedule"]
   }
 ];
 
 export function getResourceArticle(slug: string) {
   return resourceArticles.find((article) => article.slug === slug);
+}
+
+export function searchResourceArticles(query: string) {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return resourceArticles;
+  const terms = normalized.split(/\s+/).filter(Boolean);
+
+  return resourceArticles.filter((article) => {
+    const searchText = [
+      article.title,
+      article.description,
+      article.keywords.join(" "),
+      article.sections.map((section) => `${section.heading} ${section.body.join(" ")}`).join(" "),
+      article.faqs.map((faq) => `${faq.question} ${faq.answer}`).join(" "),
+      article.appActions.map((action) => `${action.label} ${action.description}`).join(" ")
+    ].join(" ").toLowerCase();
+
+    return terms.every((term) => searchText.includes(term));
+  });
 }
 
 export function resourcePath(slug: string) {

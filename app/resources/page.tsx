@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, CalendarDays, ClipboardList, NotebookPen, Target } from "lucide-react";
-import { resourceArticles, resourcePath } from "@/lib/resource-content";
+import { ArrowRight, BookOpenCheck, CalendarDays, ClipboardList, NotebookPen, Search, Target } from "lucide-react";
+import { resourcePath, searchResourceArticles } from "@/lib/resource-content";
 import { absoluteUrl, routeTitle, siteDescription, siteName } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -39,7 +39,18 @@ const toolLinks = [
   { href: "/error-book", label: "Error Book", icon: NotebookPen }
 ];
 
-export default function ResourcesPage() {
+type ResourcesPageProps = {
+  searchParams?: Promise<{ q?: string | string[] }>;
+};
+
+function firstSearchParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] || "" : value || "";
+}
+
+export default async function ResourcesPage({ searchParams }: ResourcesPageProps) {
+  const params = await searchParams;
+  const query = firstSearchParam(params?.q).trim();
+  const articles = searchResourceArticles(query);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -51,7 +62,7 @@ export default function ResourcesPage() {
       name: siteName,
       url: absoluteUrl("/")
     },
-    hasPart: resourceArticles.map((article) => ({
+    hasPart: articles.map((article) => ({
       "@type": "Article",
       headline: article.title,
       description: article.description,
@@ -81,6 +92,20 @@ export default function ResourcesPage() {
               Study systems for planning, revision, mocks, and mistake repair.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-edge-muted">{siteDescription}</p>
+            <form className="mt-6 grid gap-2 rounded-xl border border-edge-line bg-black/20 p-2 sm:grid-cols-[1fr_auto_auto]" action="/resources">
+              <label className="flex min-h-11 items-center gap-2 rounded-lg bg-white/[0.035] px-3">
+                <Search size={18} className="text-edge-muted" />
+                <input
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-edge-muted"
+                  name="q"
+                  defaultValue={query}
+                  placeholder="Search planners, revision, mocks, formulas..."
+                />
+              </label>
+              <button className="edge-button px-5" type="submit">Search</button>
+              {query ? <Link className="ghost-button px-4" href="/resources">Clear</Link> : null}
+            </form>
+            {query ? <p className="mt-3 text-sm text-edge-muted">{articles.length} guide{articles.length === 1 ? "" : "s"} found for <strong className="text-edge-text">{query}</strong>.</p> : null}
           </div>
           <div className="edge-panel rounded-xl p-5">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Use with the app</p>
@@ -99,11 +124,18 @@ export default function ResourcesPage() {
         </div>
 
         <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {resourceArticles.map((article) => (
+          {articles.map((article) => (
             <article key={article.slug} className="edge-panel rounded-xl p-5">
               <p className="text-xs font-black uppercase tracking-[0.14em] text-edge-muted">Updated {article.updatedAt}</p>
               <h2 className="mt-3 text-xl font-black leading-tight">{article.title}</h2>
               <p className="mt-3 text-sm leading-6 text-edge-muted">{article.description}</p>
+              {article.appActions[0] ? (
+                <div className="mt-4 rounded-lg border border-edge-line bg-black/15 p-3">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-edge-lime">App action</p>
+                  <strong className="mt-1 block text-sm">{article.appActions[0].label}</strong>
+                  <p className="mt-1 text-xs leading-5 text-edge-muted">{article.appActions[0].description}</p>
+                </div>
+              ) : null}
               <div className="mt-4 flex flex-wrap gap-2">
                 {article.keywords.slice(0, 3).map((keyword) => (
                   <span key={keyword} className="rounded-full border border-edge-line bg-black/15 px-3 py-1 text-xs text-edge-muted">{keyword}</span>
@@ -115,6 +147,12 @@ export default function ResourcesPage() {
             </article>
           ))}
         </div>
+        {!articles.length ? (
+          <div className="edge-panel mt-10 rounded-xl p-5">
+            <h2 className="text-xl font-black">No resource matched that search.</h2>
+            <p className="mt-2 text-sm leading-6 text-edge-muted">Try terms like planner, revision, mock, formula, error book, or drop year.</p>
+          </div>
+        ) : null}
       </section>
     </main>
   );

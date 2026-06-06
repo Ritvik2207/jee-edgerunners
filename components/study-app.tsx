@@ -35,8 +35,9 @@ import {
 import { buildDailyPlan, formatMinutes, type PlannerBlock } from "@/lib/planner";
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase";
 import {
+  buildStudyActions,
+  chapterGuideForTopic,
   formatHours,
-  buildRevisionItems,
   markStudyActivity,
   mistakeTypes,
   practiceAccuracy,
@@ -53,10 +54,13 @@ import {
   totalMockScore,
   weakestMockSubject,
   type ErrorLog,
+  type ChapterGuide,
   type MistakeType,
   type MockTest,
+  type StudyActionItem,
   type StudyState,
   type Subject,
+  type Topic,
   type ViewKey
 } from "@/lib/study-data";
 import { hasLegacyProgress, importLegacyProgress, readLocalState, writeLocalState } from "@/lib/storage";
@@ -257,11 +261,12 @@ export function StudyApp({ initialView }: StudyAppProps) {
 
   const supabase = useMemo(() => getSupabaseClient(), []);
   const plan = useMemo(() => buildDailyPlan(state), [state]);
+  const actionItems = useMemo(() => buildStudyActions(state), [state]);
   const latestMock = state.mockTests.at(-1);
   const searchResults = useMemo(() => buildSearchResults(state, searchQuery), [state, searchQuery]);
   const dueRevisionCount = useMemo(
-    () => buildRevisionItems(state).filter((item) => !item.completed && item.dueDate <= todayKey()).length,
-    [state]
+    () => actionItems.filter((item) => !item.completed && item.dueDate <= todayKey()).length,
+    [actionItems]
   );
   const hasLegacy = hasLegacyProgress();
 
@@ -700,6 +705,7 @@ export function StudyApp({ initialView }: StudyAppProps) {
               activeSession={activeSession}
               startSession={startSession}
               commitState={commitState}
+              actionItems={actionItems}
             />
           )}
 
@@ -870,10 +876,10 @@ function Sidebar({ activeView }: { activeView: ViewKey }) {
 }
 
 function MobileNav({ activeView }: { activeView: ViewKey }) {
-  const mobileItems = navigation.filter((item) => ["dashboard", "planner", "syllabus", "error-book", "mocks"].includes(item.key));
+  const mobileItems = navigation.filter((item) => ["dashboard", "planner", "syllabus", "error-book", "mocks", "resources"].includes(item.key));
 
   return (
-    <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-5 rounded-xl border border-edge-line bg-[#04101c]/95 p-2 shadow-edge backdrop-blur-xl lg:hidden" aria-label="Mobile navigation">
+    <nav className="fixed inset-x-3 bottom-3 z-30 grid grid-cols-6 rounded-xl border border-edge-line bg-[#04101c]/95 p-2 shadow-edge backdrop-blur-xl lg:hidden" aria-label="Mobile navigation">
       {mobileItems.map((item) => {
         const Icon = item.icon;
         const active = item.key === activeView;
@@ -886,7 +892,7 @@ function MobileNav({ activeView }: { activeView: ViewKey }) {
             href={item.href}
           >
             <Icon size={18} />
-            <span>{item.key === "error-book" ? "Errors" : item.label.split(" ")[0]}</span>
+            <span>{item.key === "error-book" ? "Errors" : item.key === "resources" ? "Guides" : item.label.split(" ")[0]}</span>
           </Link>
         );
       })}
@@ -934,7 +940,7 @@ function Topbar({
             <BookMarked size={18} className="text-edge-cyan" />
             <span>Resources</span>
           </Link>
-          <Link className="relative grid h-9 w-9 place-items-center rounded-lg border border-edge-line bg-white/[0.035]" href="/dashboard#revision-queue" aria-label={`${dueRevisionCount} revision items due`}>
+          <Link className="relative grid h-9 w-9 place-items-center rounded-lg border border-edge-line bg-white/[0.035]" href="/dashboard#action-queue" aria-label={`${dueRevisionCount} study actions due`}>
             <Bell size={18} className="text-edge-text" />
             {dueRevisionCount > 0 && <span className="absolute -right-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-edge-pink px-1 text-[0.65rem] font-black text-white">{dueRevisionCount}</span>}
           </Link>
@@ -1032,6 +1038,7 @@ function MiniMetric({ icon: Icon, label, value }: { icon: typeof Clock3; label: 
 function DashboardGrid({
   state,
   plan,
+  actionItems,
   latestMock,
   timerSeconds,
   timerRunning,
@@ -1043,6 +1050,7 @@ function DashboardGrid({
 }: {
   state: StudyState;
   plan: ReturnType<typeof buildDailyPlan>;
+  actionItems: StudyActionItem[];
   latestMock?: MockTest;
   timerSeconds: number;
   timerRunning: boolean;
@@ -1060,7 +1068,7 @@ function DashboardGrid({
       <MockSummary latestMock={latestMock} />
       <TimerPanel timerSeconds={timerSeconds} timerRunning={timerRunning} activeSession={activeSession} setTimerRunning={setTimerRunning} setTimerSeconds={setTimerSeconds} />
       <ScratchpadPanel state={state} commitState={commitState} />
-      <UpcomingPanel state={state} commitState={commitState} />
+      <UpcomingPanel state={state} actionItems={actionItems} commitState={commitState} />
     </div>
   );
 }
@@ -1421,7 +1429,7 @@ function TimerPanel({
 
 function ScratchpadPanel({ state, commitState }: { state: StudyState; commitState: (state: StudyState) => void }) {
   return (
-    <section className="edge-panel rounded-xl p-5">
+    <section id="scratchpad" className="edge-panel scroll-mt-24 rounded-xl p-5">
       <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Scratchpad / Formula Pin</p><BookMarked className="text-edge-muted" size={18} /></div>
       <textarea
         className="input-shell min-h-[220px] resize-none px-3 py-3 font-mono text-sm leading-6 text-edge-lime"
@@ -1433,42 +1441,96 @@ function ScratchpadPanel({ state, commitState }: { state: StudyState; commitStat
   );
 }
 
-function UpcomingPanel({ state, commitState }: { state: StudyState; commitState: (state: StudyState) => void }) {
-  const items = buildRevisionItems(state).filter((item) => !item.completed).slice(0, 5);
+function UpcomingPanel({
+  state,
+  actionItems,
+  commitState
+}: {
+  state: StudyState;
+  actionItems: StudyActionItem[];
+  commitState: (state: StudyState) => void;
+}) {
+  const items = actionItems.filter((item) => !item.completed);
 
-  function completeRevision(itemId: string) {
-    commitState(markStudyActivity({ ...state, revisionDone: { ...state.revisionDone, [itemId]: true } }));
+  function completeAction(item: StudyActionItem) {
+    if (item.kind === "revision" && item.revisionId) {
+      commitState(markStudyActivity({ ...state, revisionDone: { ...state.revisionDone, [item.revisionId]: true } }));
+      return;
+    }
+
+    if (item.kind === "mistake-repair" && item.errorId) {
+      commitState(markStudyActivity({
+        ...state,
+        errorLogs: state.errorLogs.map((entry) => entry.id === item.errorId ? { ...entry, resolved: true } : entry)
+      }));
+      return;
+    }
+
+    if (item.kind === "mock-repair") {
+      const sourceMock = state.mockTests.find((mock) => mock.id === item.mockId);
+      const weakChapter = item.title.replace(/^Mock repair:\s*/, "").trim() || item.detail;
+      const entry: ErrorLog = {
+        id: crypto.randomUUID(),
+        subject: item.subject,
+        topic: weakChapter,
+        weakChapter,
+        mistakeType: "Conceptual",
+        repeatCount: 1,
+        repairTask: item.action,
+        reason: `Created from ${sourceMock?.name || "mock test"}: ${item.detail}.`,
+        date: todayKey(),
+        resolved: false
+      };
+      commitState(markStudyActivity({ ...state, errorLogs: [...state.errorLogs, entry] }));
+    }
   }
 
   return (
-    <section id="revision-queue" className="edge-panel scroll-mt-24 rounded-xl p-5">
-      <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Revision Queue</p><CalendarDays className="text-edge-pink" size={18} /></div>
-      <div className="space-y-2">
-        {items.length ? items.map((item) => {
-          const meta = subjectMeta[item.subject];
-          return (
-            <div key={item.id} className="rounded-lg border border-edge-line bg-white/[0.035] p-3">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <strong>{item.topicTitle}</strong>
-                  <p className="text-xs text-edge-muted" style={{ color: meta.color }}>{item.subject} | {item.stage} | {item.status === "overdue" ? "Overdue" : item.status === "today" ? "Due today" : `Due ${item.dueDate}`}</p>
-                </div>
-                <button className="ghost-button min-h-8 px-3 text-xs" type="button" onClick={() => completeRevision(item.id)}>Done</button>
+    <section id="action-queue" className="edge-panel scroll-mt-24 rounded-xl p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Action Queue</p>
+          <p className="mt-1 text-sm text-edge-muted">Mistakes, mock weak chapters, and revision dates.</p>
+        </div>
+        <CalendarDays className="text-edge-pink" size={18} />
+      </div>
+      <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1 thin-scrollbar">
+        {items.length ? items.map((item) => (
+          <div key={item.id} className="rounded-lg border border-edge-line bg-white/[0.035] p-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="text-xs font-black uppercase tracking-[0.12em]" style={{ color: item.color }}>{item.subject}</span>
+                <strong className="mt-1 block">{item.title}</strong>
+                <p className="mt-1 text-xs text-edge-muted">{item.sourceLabel} | {item.status === "overdue" ? `Overdue since ${item.dueDate}` : item.status === "today" ? "Due today" : `Due ${item.dueDate}`}</p>
+                <p className="mt-2 text-sm leading-6 text-edge-muted">{item.detail}</p>
+                <p className="mt-2 rounded-md border border-edge-line bg-black/15 px-3 py-2 text-xs text-edge-lime">{item.action}</p>
               </div>
+              <button className="ghost-button min-h-8 px-3 text-xs" type="button" onClick={() => completeAction(item)}>
+                {item.kind === "mock-repair" ? "Add repair" : item.kind === "mistake-repair" ? "Resolve" : "Done"}
+              </button>
             </div>
-          );
-        }) : (
+          </div>
+        )) : (
           <div className="rounded-lg border border-edge-line bg-white/[0.035] p-4">
-            <strong>No revision due yet</strong>
-            <p className="mt-1 text-sm text-edge-muted">Mark syllabus topics complete to create 1-day, 7-day, and 21-day revisions.</p>
+            <strong>No actions waiting</strong>
+            <p className="mt-1 text-sm text-edge-muted">Complete a syllabus topic, log a mistake, or add a mock weak chapter to create dated actions.</p>
           </div>
         )}
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <Link className="ghost-button px-3 text-xs" href="/syllabus">Complete topics</Link>
+        <Link className="ghost-button px-3 text-xs" href="/mocks">Log mock</Link>
+        <Link className="ghost-button px-3 text-xs" href="/error-book">Open errors</Link>
       </div>
     </section>
   );
 }
 
 function SyllabusPanel({ state, commitState, expanded }: { state: StudyState; commitState: (state: StudyState) => void; expanded: boolean }) {
+  const [selectedTopicId, setSelectedTopicId] = useState(syllabusTopics[0]?.id || "");
+  const selectedTopic = syllabusTopics.find((topic) => topic.id === selectedTopicId) || syllabusTopics[0];
+  const selectedGuide = selectedTopic ? chapterGuideForTopic(selectedTopic) : null;
+
   function toggleTopic(topicId: string) {
     const done = Boolean(state.completedTopics[topicId]);
     const completedTopics = { ...state.completedTopics, [topicId]: !done };
@@ -1505,65 +1567,173 @@ function SyllabusPanel({ state, commitState, expanded }: { state: StudyState; co
     });
   }
 
+  function addRepairFromTopic(topic: Topic) {
+    const hasOpenRepair = state.errorLogs.some((entry) => (
+      !entry.resolved &&
+      entry.subject === topic.subject &&
+      (entry.weakChapter || entry.topic).trim().toLowerCase() === topic.title.toLowerCase()
+    ));
+    if (hasOpenRepair) return;
+
+    const entry: ErrorLog = {
+      id: crypto.randomUUID(),
+      subject: topic.subject,
+      topic: topic.title,
+      weakChapter: topic.title,
+      mistakeType: "Conceptual",
+      repeatCount: 1,
+      repairTask: `Repair ${topic.title}: revise formulas/traps, solve 15 targeted questions, and write one correction note.`,
+      reason: `Added from chapter detail view for ${topic.title}.`,
+      date: todayKey(),
+      resolved: false
+    };
+    commitState(markStudyActivity({ ...state, errorLogs: [...state.errorLogs, entry] }));
+  }
+
   return (
     <section className="edge-panel mt-4 rounded-xl p-5">
       <div className="mb-4 flex items-center justify-between"><p className="text-xs font-black uppercase tracking-[0.18em] text-edge-muted">Syllabus Tracker</p><Zap className="text-edge-lime" /></div>
-      <div className={`grid gap-3 ${expanded ? "lg:grid-cols-3" : "lg:grid-cols-5"}`}>
-        {syllabusTopics.map((topic) => {
-          const done = Boolean(state.completedTopics[topic.id]);
-          const meta = subjectMeta[topic.subject];
-          const confidence = state.confidence[topic.id] || 0;
-          return (
-            <article
-              key={topic.id}
-              className={`rounded-lg border p-4 transition hover:-translate-y-0.5 ${done ? "border-edge-lime bg-edge-lime/10" : "border-edge-line bg-white/[0.035]"}`}
-            >
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <span className="text-xs font-black uppercase tracking-[0.12em]" style={{ color: meta.color }}>{topic.subject}</span>
-                <button
-                  className={`grid h-8 w-8 place-items-center rounded-full border ${done ? "border-edge-lime bg-edge-lime text-[#071014]" : "border-edge-line text-edge-muted"}`}
-                  type="button"
-                  aria-label={done ? `Reopen ${topic.title}` : `Complete ${topic.title}`}
-                  onClick={() => toggleTopic(topic.id)}
-                >
-                  {done ? <Check size={16} /> : null}
-                </button>
-              </div>
-              <strong>{topic.title}</strong>
-              <p className="mt-2 text-sm text-edge-muted">{topic.track} | {topic.priority}</p>
-              <label className="mt-3 grid gap-2 text-xs text-edge-muted">
-                <span className="flex items-center justify-between gap-3">
-                  Confidence
-                  <span className="flex items-center gap-2">
-                    <input
-                      className="input-shell h-8 w-20 px-2 text-right text-xs"
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="5"
-                      aria-label={`${topic.title} confidence`}
-                      value={confidence}
-                      onChange={(event) => updateConfidence(topic.id, Number(event.target.value))}
-                    />
-                    <strong className="text-edge-text">%</strong>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+        {selectedTopic && selectedGuide ? (
+          <ChapterDetailPanel
+            topic={selectedTopic}
+            guide={selectedGuide}
+            state={state}
+            toggleTopic={toggleTopic}
+            addRepairFromTopic={addRepairFromTopic}
+          />
+        ) : null}
+        <div className={`grid gap-3 xl:order-1 ${expanded ? "lg:grid-cols-2 2xl:grid-cols-3" : "lg:grid-cols-5"}`}>
+          {syllabusTopics.map((topic) => {
+            const done = Boolean(state.completedTopics[topic.id]);
+            const selected = topic.id === selectedTopic?.id;
+            const meta = subjectMeta[topic.subject];
+            const confidence = state.confidence[topic.id] || 0;
+            return (
+              <article
+                key={topic.id}
+                className={`rounded-lg border p-4 transition hover:-translate-y-0.5 ${
+                  selected ? "border-edge-cyan bg-edge-cyan/10" : done ? "border-edge-lime bg-edge-lime/10" : "border-edge-line bg-white/[0.035]"
+                }`}
+              >
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <span className="text-xs font-black uppercase tracking-[0.12em]" style={{ color: meta.color }}>{topic.subject}</span>
+                  <button
+                    className={`grid h-8 w-8 place-items-center rounded-full border ${done ? "border-edge-lime bg-edge-lime text-[#071014]" : "border-edge-line text-edge-muted"}`}
+                    type="button"
+                    aria-label={done ? `Reopen ${topic.title}` : `Complete ${topic.title}`}
+                    onClick={() => toggleTopic(topic.id)}
+                  >
+                    {done ? <Check size={16} /> : null}
+                  </button>
+                </div>
+                <strong>{topic.title}</strong>
+                <p className="mt-2 text-sm text-edge-muted">{topic.track} | {topic.priority}</p>
+                <label className="mt-3 grid gap-2 text-xs text-edge-muted">
+                  <span className="flex items-center justify-between gap-3">
+                    Confidence
+                    <span className="flex items-center gap-2">
+                      <input
+                        className="input-shell h-8 w-20 px-2 text-right text-xs"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="5"
+                        aria-label={`${topic.title} confidence`}
+                        value={confidence}
+                        onChange={(event) => updateConfidence(topic.id, Number(event.target.value))}
+                      />
+                      <strong className="text-edge-text">%</strong>
+                    </span>
                   </span>
-                </span>
-                <input
-                  className="accent-edge-lime"
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={confidence}
-                  onChange={(event) => updateConfidence(topic.id, Number(event.target.value))}
-                />
-              </label>
-              {done && state.completedAt[topic.id] ? <p className="mt-2 text-xs text-edge-muted">Completed {state.completedAt[topic.id]}</p> : null}
-            </article>
-          );
-        })}
+                  <input
+                    className="accent-edge-lime"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={confidence}
+                    onChange={(event) => updateConfidence(topic.id, Number(event.target.value))}
+                  />
+                </label>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button className="ghost-button min-h-8 px-3 text-xs" type="button" onClick={() => setSelectedTopicId(topic.id)}>Details</button>
+                  <button className="ghost-button min-h-8 px-3 text-xs" type="button" onClick={() => addRepairFromTopic(topic)}>Repair</button>
+                </div>
+                {done && state.completedAt[topic.id] ? <p className="mt-2 text-xs text-edge-muted">Completed {state.completedAt[topic.id]}</p> : null}
+              </article>
+            );
+          })}
+        </div>
       </div>
     </section>
+  );
+}
+
+function ChapterDetailPanel({
+  topic,
+  guide,
+  state,
+  toggleTopic,
+  addRepairFromTopic
+}: {
+  topic: Topic;
+  guide: ChapterGuide;
+  state: StudyState;
+  toggleTopic: (topicId: string) => void;
+  addRepairFromTopic: (topic: Topic) => void;
+}) {
+  const done = Boolean(state.completedTopics[topic.id]);
+  const confidence = state.confidence[topic.id] || 0;
+  const meta = subjectMeta[topic.subject];
+
+  return (
+    <aside id="chapter-detail" className="rounded-xl border border-edge-line bg-black/20 p-4 xl:order-2 xl:sticky xl:top-24 xl:self-start">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <span className="text-xs font-black uppercase tracking-[0.14em]" style={{ color: meta.color }}>{topic.subject}</span>
+          <h2 className="mt-2 text-2xl font-black leading-tight">{topic.title}</h2>
+          <p className="mt-1 text-sm text-edge-muted">{topic.unit} | {topic.track} | {topic.priority} priority</p>
+        </div>
+        <span className="rounded-full border border-edge-line px-3 py-1 text-xs font-bold text-edge-muted">{confidence}% confidence</span>
+      </div>
+
+      <div className="grid gap-3">
+        <GuideList title="Formulas / recall card" items={guide.formulas} />
+        <GuideList title="Common traps" items={guide.traps} />
+        <GuideList title="Repair notes" items={guide.repairNotes} />
+        <GuideList title="Safe guidance" items={guide.guidance} />
+      </div>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+        <button className="edge-button px-4" type="button" onClick={() => toggleTopic(topic.id)}>
+          {done ? "Reopen chapter" : "Mark complete"}
+        </button>
+        <button className="ghost-button px-4" type="button" onClick={() => addRepairFromTopic(topic)}>Add repair action</button>
+        <Link className="ghost-button px-4" href="/planner">Use in planner</Link>
+        <Link className="ghost-button px-4" href="/error-book">Open Error Book</Link>
+      </div>
+
+      <p className="mt-4 rounded-lg border border-edge-line bg-white/[0.035] p-3 text-xs leading-5 text-edge-muted">
+        When you mark this complete, the app creates 1-day, 7-day, and 21-day revision actions from the completion date.
+      </p>
+    </aside>
+  );
+}
+
+function GuideList({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="rounded-lg border border-edge-line bg-white/[0.035] p-3">
+      <h3 className="text-xs font-black uppercase tracking-[0.14em] text-edge-muted">{title}</h3>
+      <ul className="mt-2 space-y-2 text-sm leading-6 text-edge-muted">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-edge-lime" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

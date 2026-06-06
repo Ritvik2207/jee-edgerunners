@@ -67,6 +67,33 @@ export type RevisionItem = {
   status: "overdue" | "today" | "upcoming";
 };
 
+export type StudyActionKind = "revision" | "mistake-repair" | "mock-repair";
+
+export type StudyActionItem = {
+  id: string;
+  kind: StudyActionKind;
+  title: string;
+  detail: string;
+  action: string;
+  subject: Subject;
+  dueDate: string;
+  status: "overdue" | "today" | "upcoming";
+  sourceLabel: string;
+  completed: boolean;
+  color: string;
+  topicId?: string;
+  errorId?: string;
+  mockId?: string;
+  revisionId?: string;
+};
+
+export type ChapterGuide = {
+  formulas: string[];
+  traps: string[];
+  repairNotes: string[];
+  guidance: string[];
+};
+
 export const subjects: Subject[] = ["Mathematics", "Physics", "Chemistry"];
 export const mistakeTypes: MistakeType[] = ["Conceptual", "Calculation", "Silly Mistake", "Time Pressure", "Memory Gap"];
 
@@ -178,6 +205,245 @@ export function buildRevisionItems(state: StudyState): RevisionItem[] {
       if (a.completed !== b.completed) return a.completed ? 1 : -1;
       return a.dueDate.localeCompare(b.dueDate);
     });
+}
+
+function actionStatus(dueDate: string): StudyActionItem["status"] {
+  const today = todayKey();
+  if (dueDate < today) return "overdue";
+  if (dueDate === today) return "today";
+  return "upcoming";
+}
+
+function safeDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : todayKey();
+}
+
+function normalizedChapter(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function matchingMockRepair(state: StudyState, mock: MockTest, subject: Subject, weakChapter: string) {
+  const chapter = normalizedChapter(weakChapter);
+  const mockName = mock.name.trim().toLowerCase();
+
+  return state.errorLogs.find((entry) => {
+    if (entry.subject !== subject) return false;
+    if (normalizedChapter(entry.weakChapter || entry.topic) !== chapter) return false;
+    return entry.reason.toLowerCase().includes(mockName);
+  });
+}
+
+export function buildStudyActions(state: StudyState): StudyActionItem[] {
+  const revisionActions: StudyActionItem[] = buildRevisionItems(state).map((item) => ({
+    id: `revision:${item.id}`,
+    kind: "revision",
+    title: `${item.stage} revision`,
+    detail: item.topicTitle,
+    action: "Active recall first, then solve a short mixed set and update confidence.",
+    subject: item.subject,
+    dueDate: item.dueDate,
+    status: item.status,
+    sourceLabel: "Syllabus completion",
+    completed: item.completed,
+    color: subjectMeta[item.subject].color,
+    topicId: item.topicId,
+    revisionId: item.id
+  }));
+
+  const mistakeActions: StudyActionItem[] = state.errorLogs
+    .filter((entry) => !entry.resolved)
+    .map((entry) => {
+      const dueDate = safeDateKey(entry.date);
+      return {
+        id: `mistake:${entry.id}`,
+        kind: "mistake-repair",
+        title: `Repair ${entry.weakChapter || entry.topic}`,
+        detail: `${entry.mistakeType} mistake, repeated ${entry.repeatCount}x`,
+        action: entry.repairTask || `Repair ${entry.topic} with three examples and one correction note.`,
+        subject: entry.subject,
+        dueDate,
+        status: actionStatus(dueDate),
+        sourceLabel: "Error Book",
+        completed: false,
+        color: subjectMeta[entry.subject].color,
+        errorId: entry.id
+      };
+    });
+
+  const mockActions: StudyActionItem[] = state.mockTests.flatMap((mock) => (
+    subjects.flatMap((subject) => {
+      const weakChapter = subjectWeakChapter(mock, subject).trim();
+      if (!weakChapter) return [];
+
+      const existingRepair = matchingMockRepair(state, mock, subject, weakChapter);
+      if (existingRepair && !existingRepair.resolved) return [];
+
+      const score = subjectScore(mock, subject);
+      const accuracy = subjectAccuracy(mock, subject);
+      const dueDate = addDays(safeDateKey(mock.date), 1);
+
+      return [{
+        id: `mock:${mock.id}:${subject}`,
+        kind: "mock-repair" as const,
+        title: `Mock repair: ${weakChapter}`,
+        detail: `${mock.name} | ${score}/100, ${accuracy}% accuracy`,
+        action: `Repair ${weakChapter}: revise the trap list, solve 15 targeted questions, and log every miss.`,
+        subject,
+        dueDate,
+        status: actionStatus(dueDate),
+        sourceLabel: "Mock weak chapter",
+        completed: Boolean(existingRepair?.resolved),
+        color: subjectMeta[subject].color,
+        mockId: mock.id
+      }];
+    })
+  ));
+
+  const statusRank: Record<StudyActionItem["status"], number> = { overdue: 0, today: 1, upcoming: 2 };
+  const kindRank: Record<StudyActionKind, number> = { "mistake-repair": 0, "mock-repair": 1, revision: 2 };
+
+  return [...mistakeActions, ...mockActions, ...revisionActions].sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    return kindRank[a.kind] - kindRank[b.kind] || statusRank[a.status] - statusRank[b.status] || a.dueDate.localeCompare(b.dueDate);
+  });
+}
+
+function baseChapterGuide(topic: Topic): ChapterGuide {
+  const subjectBase: Record<Subject, ChapterGuide> = {
+    Mathematics: {
+      formulas: [
+        `Build a one-page formula card for ${topic.title} with definitions, conditions, and standard transformations.`,
+        "Keep one solved example beside each formula family so the usage is clear."
+      ],
+      traps: [
+        "Applying a formula without checking its condition.",
+        "Skipping algebra sign checks in the final two steps."
+      ],
+      repairNotes: [
+        "Redo two wrong examples slowly and write the exact step where the method broke.",
+        "Solve a short mixed set after the repair note so the chapter is tested under switching pressure."
+      ],
+      guidance: [
+        "Keep this chapter guide original and exam-safe: use your own notes, NCERT/official syllabus wording, and self-written examples.",
+        `For ${topic.track}, focus on recognition first, then speed. Speed should come after the method is reliable.`
+      ]
+    },
+    Physics: {
+      formulas: [
+        `Write the key ${topic.title} formulas with units, symbol meaning, and limiting cases.`,
+        "Add one line for when each formula is valid so you do not use it outside its assumptions."
+      ],
+      traps: [
+        "Forgetting units or dimensions while substituting numbers.",
+        "Using a memorized result without checking the physical condition."
+      ],
+      repairNotes: [
+        "Redo one conceptual miss and one numerical miss, then write what assumption was hidden.",
+        "Make a trap list for units, signs, diagrams, and approximation mistakes."
+      ],
+      guidance: [
+        "Use public-syllabus-safe language: concepts, formula conditions, and your own examples. Do not copy paid question solutions.",
+        `For ${topic.track}, draw the situation before calculation whenever possible.`
+      ]
+    },
+    Chemistry: {
+      formulas: [
+        `Keep ${topic.title} formulas, reactions, or key facts in small recall cards.`,
+        "Add conditions, exceptions, and units beside each item instead of only listing final results."
+      ],
+      traps: [
+        "Mixing similar terms because the condition or exception was not written.",
+        "Reading a line as memory work when it actually needs a small concept check."
+      ],
+      repairNotes: [
+        "Write the wrong assumption, the correct rule, and one fresh self-made example.",
+        "After repair, do a quick recall pass without opening notes."
+      ],
+      guidance: [
+        "Keep Chemistry notes original and reference-safe: summarize concepts in your own words and avoid copied coaching sheets.",
+        `For ${topic.track}, separate memory facts from calculation or mechanism steps.`
+      ]
+    }
+  };
+
+  return subjectBase[topic.subject];
+}
+
+const chapterGuideOverrides: Record<string, Partial<ChapterGuide>> = {
+  "math-complex-numbers": {
+    formulas: [
+      "i^2 = -1; keep powers of i reduced before expanding.",
+      "For z = a + bi, track modulus, argument, conjugate, and geometry separately.",
+      "Use |z1 z2| = |z1||z2| and arg(z1 z2) = arg z1 + arg z2 only after checking quadrant."
+    ],
+    traps: [
+      "Changing the quadrant while simplifying argument.",
+      "Treating conjugate signs casually in division.",
+      "Mixing algebra form and polar form without converting fully."
+    ]
+  },
+  "math-integrals": {
+    formulas: [
+      "Keep standard integrals, substitution triggers, partial fractions, and definite integral properties on separate lines.",
+      "Write the condition beside each property before using it."
+    ],
+    traps: [
+      "Forgetting constant of integration in indefinite questions.",
+      "Choosing a substitution because it looks familiar instead of because it simplifies the expression."
+    ]
+  },
+  "physics-units": {
+    formulas: [
+      "Write SI base units and common derived dimensions in one compact table.",
+      "For dimensional analysis, compare dimensions before substituting numbers."
+    ],
+    traps: [
+      "Skipping unit conversion before calculation.",
+      "Assuming a formula is correct because the numbers look reasonable."
+    ]
+  },
+  "physics-rotational-motion": {
+    formulas: [
+      "Keep torque, angular momentum, moment of inertia, and energy relations in one map.",
+      "Write the axis and sign convention before using rotational equations."
+    ],
+    traps: [
+      "Using point-mass inertia when the body shape matters.",
+      "Mixing linear and angular variables without the radius relation."
+    ]
+  },
+  "chem-mole": {
+    formulas: [
+      "Keep mole, mass, molarity, molality, normality, and limiting reagent relations separated.",
+      "Write units beside concentration formulas every time."
+    ],
+    traps: [
+      "Mixing molarity and normality.",
+      "Ignoring the limiting reagent after finding moles."
+    ]
+  },
+  "chem-equilibrium": {
+    formulas: [
+      "Keep Kc, Kp, reaction quotient, degree of dissociation, and pH-related relations in separate groups.",
+      "Write the reaction direction before interpreting Q versus K."
+    ],
+    traps: [
+      "Changing coefficients without adjusting the equilibrium constant.",
+      "Confusing ionic equilibrium assumptions with chemical equilibrium setup."
+    ]
+  }
+};
+
+export function chapterGuideForTopic(topic: Topic): ChapterGuide {
+  const base = baseChapterGuide(topic);
+  const override = chapterGuideOverrides[topic.id] || {};
+
+  return {
+    formulas: override.formulas || base.formulas,
+    traps: override.traps || base.traps,
+    repairNotes: override.repairNotes || base.repairNotes,
+    guidance: override.guidance || base.guidance
+  };
 }
 
 export function seedState(): StudyState {

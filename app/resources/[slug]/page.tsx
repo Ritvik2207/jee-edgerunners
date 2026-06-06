@@ -133,13 +133,19 @@ export default async function ResourceArticlePage({ params }: ResourcePageProps)
         </section>
 
         <section className="edge-panel mt-6 rounded-xl p-5 sm:p-7">
-          <h2 className="text-2xl font-black">Use this with JEE Edgerunners</h2>
-          <p className="mt-3 text-edge-muted">Turn the guide into action using the dashboard tools.</p>
+          <h2 className="text-2xl font-black">Do this inside the app</h2>
+          <p className="mt-3 text-edge-muted">Use the guide, then turn it into a saved planner, syllabus, mock, or repair action.</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <Link className="edge-button px-4" href="/dashboard">Open dashboard <ArrowRight size={17} /></Link>
-            <Link className="ghost-button px-4" href="/planner">Build today&apos;s plan</Link>
-            <Link className="ghost-button px-4" href="/mocks">Analyze mocks</Link>
-            <Link className="ghost-button px-4" href="/error-book">Repair mistakes</Link>
+            {article.appActions.map((action, index) => (
+              <Link key={action.href + action.label} className={`${index === 0 ? "edge-button" : "ghost-button"} px-4`} href={action.href}>
+                <span className="text-left">
+                  <strong className="block">{action.label}</strong>
+                  <span className={`mt-1 block text-xs leading-5 ${index === 0 ? "text-[#24310d]" : "text-edge-muted"}`}>{action.description}</span>
+                </span>
+                {index === 0 ? <ArrowRight size={17} /> : null}
+              </Link>
+            ))}
+            <Link className="ghost-button px-4" href="/dashboard">Open dashboard</Link>
           </div>
         </section>
 
